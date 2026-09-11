@@ -1,0 +1,46 @@
+site_name: WT Knowledge Docs
+site_description: A War Thunder reverse-engineering knowledge bank
+repo_url: https://github.com/FURRO404/WT_KNOWLEDGE_DOCS
+repo_name: FURRO404/WT_KNOWLEDGE_DOCS
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+  features:
+    - navigation.top
+    - navigation.tracking
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+markdown_extensions:
+  - footnotes
+  - admonition
+  - tables
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - 01 Glossary: 01-glossary.md
+  - 02 File formats: 02-file-formats.md
+  - 03 Replays: 03-replays.md
+  - 04 Localhost 8111 API: 04-localhost-8111-api.md
+  - 05 Char server API: 05-char-server-api.md
+  - 06 Ballistics and armor: 06-ballistics-and-armor.md
+  - 07 Terrain and maps: 07-terrain-and-maps.md
+  - 08 Vehicles and models: 08-vehicles-and-models.md
+  - 09 Heatmaps and coordinates: 09-heatmaps-and-coordinates.md
+  - 10 Tooling and repos: 10-tooling-and-repos.md
