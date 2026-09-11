@@ -4,6 +4,8 @@ A knowledge bank for War Thunder (WT) reverse-engineering work. It holds what we
 found about how the game stores data, how it talks on the wire, how it computes
 combat, and how the world and the units are built.
 
+Read it as a website: https://furro404.github.io/WT_KNOWLEDGE_DOCS/
+
 ## Sections
 
 | # | File | Topic |
