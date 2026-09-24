@@ -18,6 +18,7 @@ combat, and how the world and the units are built.
 | 08 | [Vehicles and models](08-vehicles-and-models.md) | Vehicles, models, camos, X-ray, damage model |
 | 09 | [Heatmaps and coordinates](09-heatmaps-and-coordinates.md) | Heatmaps and coordinate encoding |
 | 10 | [Tooling and repos](10-tooling-and-repos.md) | The repositories and tools |
+| 11 | [TSS tournament API](11-tss-tournament-api.md) | The public API of the tournament site |
 
 ## How the pieces fit
 

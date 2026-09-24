@@ -20,6 +20,7 @@ Read it as a website: https://furro404.github.io/WT_KNOWLEDGE_DOCS/
 | 08 | [docs/08-vehicles-and-models.md](docs/08-vehicles-and-models.md) | Vehicles, models, camos, X-ray, damage model |
 | 09 | [docs/09-heatmaps-and-coordinates.md](docs/09-heatmaps-and-coordinates.md) | Heatmaps and coordinate encoding |
 | 10 | [docs/10-tooling-and-repos.md](docs/10-tooling-and-repos.md) | The repositories and tools |
+| 11 | [docs/11-tss-tournament-api.md](docs/11-tss-tournament-api.md) | The public API of the tournament site (TSS) |
 
 ## How the pieces fit
 
