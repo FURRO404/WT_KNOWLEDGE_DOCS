@@ -486,3 +486,27 @@ Leopard 2A4 elevates to +20 while the track reaches +50.
 
 Articulation does not apply to aircraft, ships, or secondary turrets — a replay
 records one aim direction per entity.
+
+## 5. Battle rating
+
+The battle rating (BR) is in `char.vromfs.bin/config/wpcost.blk`, one block per
+unit id: `BR = economicRank / 3 + 1`, rounded to one decimal. Each mode has its
+own key: `economicRankArcade` (AB), `economicRankHistorical` (RB) and
+`economicRankSimulation` (SB). The plain `economicRank` key is not a mode BR.
+Example: `us_m47_patton_II` has `economicRankHistorical` 19 (BR 7.3).
+[verified, 2.58]
+
+- Aircraft have a second set of keys for ground battles with aircraft (SQB,
+  ground RB): `economicRankTankHistorical` and `economicRankTankSimulation`.
+  Use them before `economicRankHistorical`. Example: `f_16c_block_50` has
+  `economicRankHistorical` 38 (BR 13.7) but `economicRankTankHistorical` 35
+  (BR 12.7). [verified, 2.58]
+- Every unit block in `wpcost.blk` has at least one `economicRank*` key. A
+  lookup fails only when the unit id is wrong. Some ids are not the short
+  name: the M1A2 SEP is `us_m1a2_sep_abrams` and the 2S6 is `ussr_zprk_2s6`.
+  [verified, 2.58]
+- The vehicle ids of the TSS tournament site are the same unit ids. All 245
+  ids in six sampled tournaments were in `wpcost.blk`. See
+  [11-tss-tournament-api.md](11-tss-tournament-api.md). [verified, 2.58]
+- `wpcost.blk` holds only the BR of its patch. For a BR at an earlier date, read
+  the `char.vromfs.bin` of that patch.

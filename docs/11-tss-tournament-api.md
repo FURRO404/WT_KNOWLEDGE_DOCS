@@ -62,7 +62,10 @@ cluster parameter changes nothing. [verified]
 - The list holds all upcoming tournaments (`status` "1") and the finished
   tournaments of about the last 29 days (`status` "0"). On 2026-09-24 it held
   29 upcoming and 275 finished rows. [verified]
-- `active` was "0" on every row and tells nothing. [verified]
+- `active` was "0" on all 304 rows, upcoming and finished. No tournament was
+  live in any sample, so the value while a tournament runs is not known. The
+  site JavaScript does not read `active` from a list row. Do not use it until a
+  live sample shows what it means. [verified values, js]
 - `typeTournament`: `single-elumination`, `double-elumination`, `swiss`.
   [verified]
 - `gameMode`: `RB`, `AB`, `HB` (HB is simulator battles). [verified]
@@ -104,11 +107,13 @@ JavaScript shell. The HTML holds no tournament data. [verified]
   `dateStartReg <= now <= dateStartTournament`, else `live` when
   `dateStartTournament <= now <= dateEndTournament`. [js, verified match]
 - No tournament showed before its registration opened. Registration opens at
-  06:00 UTC, 2 to 6 days before the start. [verified]
+  06:00 UTC on almost all rows (303 of 304). For the usual events it opens
+  3.3 to 7.5 days before the start. Special events (qualifiers and finals of a
+  series) opened up to 18 days before the start. [verified]
 - Before the start, `dateEndTournament` is a placeholder: exactly
   `dateStartTournament + 86400`. After the end, the server writes the real end
-  time. Do not use it as an end time before the tournament is finished.
-  [verified]
+  time. A multi-day final had a real end 251 hours after its start. Do not use
+  it as an end time before the tournament is finished. [verified]
 - `dateConfirmation` is `dateStartTournament - 1`. Registration closes at the
   start. [verified]
 - A timed check-in exists only when `get_about_info` gives `check_in` "1". The
@@ -163,6 +168,8 @@ older than the list window. [verified]
   (`[b]`, `[br]`, `[url=...]`). `descriptionTournament` and `regulations` are the
   HTML forms. Entry rules such as "anticheat required" are only in this free
   text. [verified]
+- **Status.** The detail also has `status` ("1" or "0", the same value as
+  the list row) and `active` ("0"). [verified]
 - **Teams.** `listTeams` (confirmed) and `listTeams_not_confirm`. The same lists
   as `GetListAllTeam` (section 5). [verified]
 
@@ -173,6 +180,8 @@ older than the list window. [verified]
 `rating_b`, and this call has all three. [verified] It also gives `check_in`, `check_captain_online`, `second_chance`, `autoBattle`,
 `bronzeMatch`, `rating`, `time_start {timeWinnerStr, timeFinal, startDelayTime,
 timeInviteGroup}`, `allRewards` and `missions`. [verified]
+`data.tournaments.tournamentName` is an internal id such as
+`40405763_1788802280`, not a display name. Use `nameEN`. [verified]
 
 ## 5. Teams and registration
 
@@ -180,7 +189,7 @@ timeInviteGroup}`, `allRewards` and `missions`. [verified]
 
 - `listTeamsReady`: confirmed teams. The count equals `countAllTeamsConfirm`.
 - `listTeamsNotReady`: registered teams that are not confirmed.
-- `listTeamsId`: all teams.
+- `listTeamsId`: all teams, as an object with `idTeam` keys, not a list.
 
 [verified]
 
@@ -249,7 +258,7 @@ timeInviteGroup}`, `allRewards` and `missions`. [verified]
 
 | Action | Method | Params | Notes |
 |---|---|---|---|
-| `rating_user` | POST | `type` (tank/aircraft/ship/mixed), `page` | Public PvP rating board |
+| `rating_user` | POST | `type` (tank/aircraft/ship/mixed), `page` | Public PvP rating board. `data.rating` has `ab`, `rb` and `hb` lists of 50 rows. `page` counts from 0. |
 | `get_bracket_youtube` | POST | `tournamentId` | Group and bracket data together |
 | `get_dynamic_score` | GET link | `id`, `name_image` | A score image |
 | `GetActiveMyTournaments`, `info_my_team` | POST | | Needs login |
@@ -262,8 +271,12 @@ timeInviteGroup}`, `allRewards` and `missions`. [verified]
 
 ## 8. Open questions
 
-- The values of `status`, `tournamentStatus`, `status_live` and
+- The values of `status`, `active`, `tournamentStatus`, `status_live` and
   `status_confirmation` while a tournament runs. No tournament was live during
   the research.
+- Whether the server moves the placeholder `dateEndTournament` while a
+  tournament runs. If it does not, the rule in section 3 gives `past` at
+  start + 24 h, also for a tournament that runs longer. Until this is known,
+  use list `status` "0" as the sign of the end.
 - Whether a `check_in` "1" tournament exists, and how its window behaves.
 - The rate limits of the site.
