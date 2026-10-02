@@ -511,6 +511,26 @@ Example: `us_m47_patton_II` has `economicRankHistorical` 19 (BR 7.3).
 - `wpcost.blk` holds only the BR of its patch. For a BR at an earlier date, read
   the `char.vromfs.bin` of that patch.
 
+## 5a. Unit type tags (`unittags.blk`)
+
+Each unit in `unittags.blk` carries a set of tags. The `type_*` tags give
+the role, and the plain tags `air`, `aircraft`, `tank`, `helicopter`,
+`ship` and `boat` give the class.
+
+- `type_assault` is the attacker (ground-attack) aircraft class. It is
+  never on a ground vehicle. Examples: Ayit (`a_4n`), Yak-130
+  (`yak_130_early`). These units usually also carry
+  `type_strike_aircraft`, but `type_assault` comes first in the tag order.
+- Do not map `type_assault` to a tank role. If a classifier takes the
+  first `type_*` tag it finds, a wrong `type_assault` entry wins over
+  `type_strike_aircraft`.
+- In one cache of about 3,000 units, 253 units carried `type_assault`.
+  All 253 had `air` and none had `tank`. No unit had both `aircraft` and
+  `tank`.
+- Ground role tags: `type_light_tank`, `type_medium_tank`,
+  `type_heavy_tank`, `type_tank_destroyer`, `type_spaa`,
+  `type_missile_tank`, `type_football_tank`.
+
 ## 6. Aircraft flight model data
 
 ### 6.1 Where it is
