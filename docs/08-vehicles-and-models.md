@@ -510,3 +510,73 @@ Example: `us_m47_patton_II` has `economicRankHistorical` 19 (BR 7.3).
   [11-tss-tournament-api.md](11-tss-tournament-api.md). [verified, 2.58]
 - `wpcost.blk` holds only the BR of its patch. For a BR at an earlier date, read
   the `char.vromfs.bin` of that patch.
+
+## 6. Aircraft flight model data
+
+### 6.1 Where it is
+
+The unit BLK `gamedata/flightmodels/<unit>.blk` names its flight model in the
+`fmFile` param, for example `fm/f_5a.blk`. The flight model is
+`gamedata/flightmodels/fm/<name>.blk`. Many units share one file: the F-5C
+uses `fm/f_5a.blk`. [verified, 2.58]
+
+There are two layouts:
+
+- **Older layout.** `Areas` (wing panels `WingLeftIn` ... in m², `Fuselage`,
+  `Stabilizer`, `Keel`), `Wingspan`, `Mass.WingCritOverload` (`[neg, pos]` in
+  N), and `Aerodynamics` with `lineClCoeff` (lift slope per degree),
+  `OswaldsEfficiencyNumber`, Mach multiplier sets 1 to 7, and polars
+  `NoFlaps` / `FullFlaps` (`Cl0`, `alphaCritHigh`, `ClCritHigh`, `CdMin`).
+- **Newer layout.** `Aerodynamics.WingPlane` holds `Span`, `Areas`,
+  `FlapsPolar0` / `FlapsPolar1` (the same polar keys) and
+  `Strength { CritOverload [neg, pos] N, VNE, MNE }`. `FuselagePlane`,
+  `HorStabPlane` and `VerStabPlane` have their own polars.
+  [verified, 2.58]
+
+Engine data is in `EngineType0.Main`. The count of `Engine<N>` blocks gives the
+engine count.
+
+- `Type` (`Jet` for jets), `Thrust`, `AfterburnerBoost`.
+- `ThrustMax` table: `Altitude_i` (m), `Velocity_j` (km/h, `VelocityType`
+  `TAS`), `ThrustMaxCoeff_i_j` (dry) and `ThrAftMaxCoeff_i_j` (afterburner).
+- `Mode0` ... `Mode5`: throttle position to `ThrustMult`. `Mode5` is
+  `Throttle` 1.1 (afterburner).
+
+`Passport` holds hangar-style performance: `Alt.maxSpeedWep` `[[alt_m, km/h]]`,
+`Alt.minTurnTimeWep` `[alt_m, s]`, `IAS.maxRollRateLeft` `[[ias_kmh, deg/s]]`.
+[verified, 2.58]
+
+### 6.2 Template values for modern jets
+
+For many jets the engine and `Passport` values in the client files are a
+template, not the aircraft's real performance:
+
+- `EngineType0.Main.Thrust` is `2200` in 71 of 371 jet flight models and
+  `2600` in 91 of them, for example the F-5C, F-16A, F-15A and MiG-29 9-12.
+  The real F-16A engine gives about 6,500 kgf dry.
+- The F-16A and F-15A `Passport` blocks are copies of the F-5 values
+  (`maxSpeedWep` starts `[0, 1150.09]`).
+- The live `aces.vromfs.bin` and the newer
+  `cache/binary.<version>/aces.vromfs.bin` hold the same values. The real
+  values reach the game by a path that the client BLKs do not show.
+
+The wing polar values (`lineClCoeff`, `ClCritHigh`, `CdMin`, wing areas,
+`CritOverload`) differ per jet and look real. [verified, 2.58 and 2.59]
+
+`gamedata/flightmodels/performance/<unit>.blk` (663 files) gives `altSpecs`
+per 1,000 m (`maxSpeed`, `optSpeed`, `maxClimb`) for props and early jets
+only. [verified, 2.58]
+
+For real performance, use the 8111 API in a test drive (see
+[04](04-localhost-8111-api.md)), or fit from replay tracks.
+
+### 6.3 What replay tracks show
+
+Aircraft positions in replays sample at about 4 Hz (about 250 ms). A local
+quadratic fit over ±0.8 s gives usable velocity and acceleration. In TSS
+realistic and simulator air duels (jets, under about 3 km altitude) the load
+factor normal to the flight path has a median of about 4 G and a 97th
+percentile of about 10 G. The distribution does not change with a wider fit
+window (±1.75 s), so the high values are real pulls, not noise. Top jets
+(F-15A, F-16A) show turn rates of 26 to 28 deg/s at the 90th percentile.
+[verified, 2026-10 data]

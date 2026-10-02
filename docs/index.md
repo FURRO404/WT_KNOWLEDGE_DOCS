@@ -15,7 +15,7 @@ combat, and how the world and the units are built.
 | 05 | [Char server API](05-char-server-api.md) | The online `char` server API and JWT auth |
 | 06 | [Ballistics and armor](06-ballistics-and-armor.md) | Ballistics, penetration, armor |
 | 07 | [Terrain and maps](07-terrain-and-maps.md) | Terrain decode, maps, coordinates |
-| 08 | [Vehicles and models](08-vehicles-and-models.md) | Vehicles, models, camos, X-ray, damage model |
+| 08 | [Vehicles and models](08-vehicles-and-models.md) | Vehicles, models, camos, X-ray, damage model, flight model data |
 | 09 | [Heatmaps and coordinates](09-heatmaps-and-coordinates.md) | Heatmaps and coordinate encoding |
 | 10 | [Tooling and repos](10-tooling-and-repos.md) | The repositories and tools |
 | 11 | [TSS tournament API](11-tss-tournament-api.md) | The public API of the tournament site |
