@@ -254,6 +254,49 @@ timeInviteGroup}`, `allRewards` and `missions`. [verified]
 - No call gives a per-match result time. `dateEndTournament` (after the end) is
   the only real completion time. [verified]
 
+### 6.1 Air duel missions
+
+- TSS air duels use the missions `gladiators_air_1x1_norespawn`,
+  `gladiators_air_2x2_norespawn`, `gladiators_europe_air_1x1_norespawn` and
+  `gladiators_europe_air_2x2_norespawn` (`gamedata/missions/cta/planes/duel/`),
+  in realistic and simulator difficulty. A "2x2" battle is often played by one
+  player on each side. One replay can hold several rounds: the same player uid
+  then has one track entity for each round. [verified, 2026-10 data]
+- Guns are locked for the first 30 s of each round. In the replay tracks this
+  shows as no gun hit earlier than 23.0 s after the shooter's first track
+  sample of that round (9,227 gun hits checked), because a track starts about
+  7 s into the round. The lock applies to every round, not only the first.
+  Missiles are not part of this check. [verified, 2026-10 data]
+
+## 7a. warthunder.com replay page
+
+The replay page `https://warthunder.com/{lang}/tournament/replay/` is a Vue app
+that shows only after login. Its API paths (from the page code):
+
+| Purpose | Call |
+|---|---|
+| Replay list | `GET /{lang}/api/replay`, or `POST` with filter fields |
+| One replay | `GET /{lang}/api/replay/{id}` |
+| Start the replay in the game client | `GET /{lang}/tournament/watch?sessionId={decimal session id}` |
+| Download all parts as a zip | `/{lang}/tournament/replayDownload` |
+| Report a player | `POST /{lang}/tournament/claim`, categories from `GET /{lang}/api/replay/claim_categories` |
+
+- **Start replay** sends the session ID in decimal. The page shows it in hex,
+  for example `72e390f0000bdcdc` = `8278619900504431836`. Use a 64-bit integer
+  (JavaScript `BigInt`) for the conversion. The call needs only the site login
+  cookie, and the reply is JSON with a `status` field. `{"status":"ok"}` starts
+  the replay in the client that is logged in with the same account.
+  `{"error":"SERVER_ERROR_PEER_LOGOUT","status":"failed"}` means that no such
+  client is running. [verified, 2026-10]
+- Each replay part is a file:
+  `https://wt-game-replays.warthunder.com/{hex session id}/0000.wrpl`, then
+  `0001.wrpl`, and so on. [verified, 2026-10]
+- The CDN path needs all 16 hex digits of the session ID. Some tools write the
+  hex ID with no leading zero (15 digits, for example `74b12d40024ef1e`). The
+  CDN gives 404 for that form and 302 to the file for the padded form
+  `074b12d40024ef1e`. Pad the ID to 16 digits with zeros before you build the
+  URL. [verified, 2026-10]
+
 ## 7. Other calls
 
 | Action | Method | Params | Notes |

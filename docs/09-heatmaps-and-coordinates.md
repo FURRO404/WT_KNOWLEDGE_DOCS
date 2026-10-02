@@ -22,6 +22,29 @@ The game uses a right-hand world in meters. A position has three axes:
 A tank map is flat, so a heatmap uses `x` and `z` only. It uses `y` for the
 height of the ground.
 
+### Aircraft attitude in replay tracks
+
+Replay tracks give an aircraft's yaw, pitch and roll in radians for each
+position sample. In world axes (`x` east, `y` up, `z` north):
+
+- Nose: `f = (cos p · cos y, sin p, -cos p · sin y)`.
+- Wings-level up: `u0 = normalize((0, 1, 0) - f · f.y)`.
+- Up with bank: `up = cos r · u0 + sin r · (f × u0)`.
+
+Checks on TSS air-duel tracks:
+
+- The nose lies within 0.5 rad of the flight path in more than 80% of samples
+  above 150 m/s. The rest are high angle-of-attack moments in hard turns.
+- In every sample with more than 3 G of lift, `up` points along the lift:
+  the normal part of `acceleration + g`. The mean cosine is 0.95. With the
+  other roll sign, it is -0.07.
+
+[verified, 2026-10 data]
+
+Aircraft meshes from the game use `+X` nose, `+Y` up, `+Z` right wing.
+Example: the F-15A canopy is at `x` +5.1 m, the tail at -5.9 m, and the left
+wing at `z` -5.5 m. [verified, 2.58]
+
 ## Per-level map extents
 
 Each level names two boxes in world meters. The datamine holds them in the

@@ -33,6 +33,10 @@ A `.wrpl` file starts with two `uint32` values:
 The C++ and Go parsers check `magic == CURR_MAGIC` and reject an unknown
 version.
 
+Server replay parts downloaded in 2026-10 (game 2.59) have `magic`
+`0x00018C1C` (`1C 8C 01 00` on disk). See 2.1 for the compression change that
+came with it. [verified, 2026-10]
+
 ### 1.2 The fixed header (1234 bytes)
 
 Every `.wrpl` file, finished or live, starts with a packed C struct of exactly
@@ -140,6 +144,14 @@ stream. Each parser inflates it with a standard library:
   it packet by packet (`CompressedReplayReader`).
 - `wrpl-inspector` uses `compress/zlib` (`zlib.NewReader`) as a streaming
   reader.
+
+In version `0x00018C1C` the stream is **zstd**, not zlib: it starts with the
+zstd magic `28 B5 2F FD`. The span and offsets are the same (from
+`1234 + settingsSize` to `resultsOffset`, or to the end of the file). After a
+zstd decompress, the packet stream parses with the old framing. One full
+server replay (12 parts, 18,802 packets) decoded with the old packet and
+WeaponSync rules after this one change. A zlib-only parser fails with
+"incorrect header check". [verified, 2026-10]
 
 ### 2.2 Packet framing
 
