@@ -274,6 +274,19 @@ and a combined-arms battle) gave these results. [verified, 2026-10]
   scan pattern (`azimuthLimits`, `elevationLimits`), also while the target is
   outside those limits. Client replays of the 2.59 game carry the same
   records for both aircraft of a duel. [verified, 2026-10]
+- The contact list at the end of the record (a 6-bit count, then that many
+  `uint32` values, then a 6-bit value) lists the targets that the sensor
+  detects at that sync. A contact names a unit as `0xFFFF0000 | unit_uid`.
+  Other values (about 5%) have other high bits and are not unit uids. In a 4v4
+  jet battle, no contact named the sensor's own unit, and all contacts were
+  inside the transceiver's range. In track, the contacts sit at the scan
+  centre (median 0.4–0.7° off). In search, they sit inside the scanned zone.
+  In TWS, a contact can stay in the list after the target leaves the zone,
+  like a TWS track file. [verified, 2026-10]
+- The record does not carry the beam's position inside the scan pattern. No
+  field changes with the pattern's period: the `int16` at scale 1 changed 5
+  times in 6,346 pairs of neighbour samples of one pattern. A sync comes about
+  every 250 ms. [verified, 2026-10]
 
 **Seeker blocks of a guided missile in flight.** The weapon sync of a missile
 carries a seeker block of a fixed bit length for each seeker kind. Read the
