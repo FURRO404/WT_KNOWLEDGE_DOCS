@@ -96,6 +96,14 @@ field names (for example `Raw_Level`, `Raw_LevelSettings`, `ResultsBlkOffset`,
 the byte at offset 742 for `0x5A` (`isServer`). `WrplReplayParser` tests
 `playerNo == 0x80000000` instead. A server replay has no local player.
 
+**A client replay carries the match's real session ID.** A `.wrpl` that the
+game client saves in its `Replays` folder has the same `session_id` at offset
+732 as the server-side record of that match. Checked on squadron battles: the
+hex value matched the match ID of the server data. The client can split one match into
+several files, and each file has the same `session_id`. Read it as a
+little-endian `uint64`, then format it as hex. To read only this ID, you do not
+need to decompress the file. [verified, 2026-10]
+
 ### 1.3 Section layout
 
 The header defines the position of every later section:
@@ -224,6 +232,77 @@ that the sensor detects. `WrplReplayParser`'s `PositionSync.cpp` decodes the
 same records and unpacks quantized fields with `netutils::UNPACKS<int16_t>` at a
 scale (for example `PI` for angles).
 
+**Sensor record fields.** Two 2.59 server replays (a 4v4 top-tier jet battle
+and a combined-arms battle) gave these results. [verified, 2026-10]
+
+- The first byte after the leading bit holds the sensor kind in the high nibble
+  and the sensor slot in the low nibble. The slot is the index of the sensor in
+  the vehicle's `sensors { sensor {...} }` list (aircraft `flightmodels/*.blk`,
+  ground `units/tankmodels/*.blk`). An RWR in that list sends no record, but it
+  keeps its slot number.
+- The leading bit is "on". When it is 0 the record carries no values.
+- In a kind-1 record one more bit follows the type byte. When it is 0, the
+  record stops there and carries no state, also when "on" is 1.
+- A kind-2 record (a laser, for example a tank's) has a different layout: a
+  bit, an `int16` angle at scale `PI`, then two blocks of 96 bits. A decoder
+  that keeps one struct for all kinds must not read the kind-1 fields from it.
+- In a kind-1 record the packed `int16` holds three indexes into the sensor's
+  own BLK (`gamedata/sensors/*.blk`), each in the key order of its block:
+  bits 0–3 index `transivers`, bits 4–9 index `scanPatterns`, bits 10–13 index
+  `signals`. All three read 15, 63, 15 for a sensor that has no state.
+- The scan pattern tells the mode. A pattern of `type: "no"` (named `track`,
+  `hmdTrack`, `radarTrack` and similar) is a single-target track. Patterns of
+  type `pyramide`, `cone` or `cylinder` are scans (search, TWS, ACM or HMD
+  lock acquisition).
+- The `float` after the packed `int16` is the battle time in seconds of the last
+  mode change.
+- The two `int16` values at scale `PI` are the scan-centre azimuth and
+  elevation in radians, relative to the vehicle. In search they hold the
+  scan-zone offset that the player set. In track they follow the target.
+- The `int16` at scale 1 is a value in [0, 1] with no known meaning.
+- In the target-designation records of the same sync, a record whose first
+  byte is 6 carries the tracked target in its trailing `uint32`
+  (`0xFFFF0000 | unit_uid`). It appears less than 1 s after the target first
+  shows in the sensor's contact list.
+- A unit uid is unique only per unit kind. An aircraft and a ground vehicle in
+  the same battle can share one uid.
+- Only a designation record whose trailing `uint32` has `0xFFFF` in its high
+  16 bits names a target. Other values occur in the same record kind and are
+  not unit uids. A radar in TWS also sends the designated target.
+- The scan-centre angles are relative to the full body frame (yaw, then
+  pitch, then roll of the vehicle). They stop at the antenna limits of the
+  scan pattern (`azimuthLimits`, `elevationLimits`), also while the target is
+  outside those limits. Client replays of the 2.59 game carry the same
+  records for both aircraft of a duel. [verified, 2026-10]
+
+**Seeker blocks of a guided missile in flight.** The weapon sync of a missile
+carries a seeker block of a fixed bit length for each seeker kind. Read the
+bits MSB first in each byte. A multi-byte number is little-endian from its bit
+offset. [verified, 2026-10]
+
+- Radar seeker, 607 bits. Bits 8–10 are `111` in track and `001` in search.
+  Three `float` values at bits 11, 43 and 75 are the seeker's estimate of the
+  target position in world axes. In track it was a median of 34 m from the
+  true target. Three `int16` values at bits 340, 356 and 372, divided by 32767,
+  are the unit line of sight from the missile in world axes. A `uint16` at bit
+  454 is the range in metres. In track it read 0 to 15% (median 10%) above the
+  true distance.
+- Radar seeker, 639 bits. This block occurs one time per change from search to
+  track. Bits 8–10 are `100`, then 32 bits follow whose meaning is not known.
+  After them the 607-bit layout continues at an offset of +32 bits (line of
+  sight at 372, 388 and 404, range at 486).
+- IR seeker, 283 bits. The line of sight is at bits 58, 74 and 90 (same
+  scale). No lock bit was found.
+
+**Sensor kind in the sensor BLK.** The `type` of most sensor BLKs is `radar`,
+also for IRSTs and optical trackers. The transceiver tells the kind: its
+`visibilityType` is `infraRed` for an IRST, `optic` for a TV tracker,
+`radarIntercept` for an ESM receiver, and absent for a radar. One sensor can
+mix kinds: a radar BLK with an `irst` transceiver and `irst*` scan patterns.
+The transceiver index in the replay record thus tells radar from IR for each
+sample. An IR transceiver can give `range0` to `range7` in place of `range`.
+[verified, 2026-10]
+
 The numeric type codes above are the replay runtime layer. The static sensor
 definitions live in the datamine. [wt_sensor](https://github.com/Warthunder-Open-Source-Foundation/wt_sensor)
 parses those BLK files. It models a radar as a set of transceivers with types
@@ -292,6 +371,98 @@ The game splits a server-recorded match into several `.wrpl` part files.
 `wrpl-inspector`'s `OpenPartedReplay` and `WrplReplayParser`'s
 `ServerReplayReader` both follow this rule. A client replay is a single
 self-contained file; `isServer` is false and there are no parts.
+
+### 2.7 Client replays in version `0x00018C1C`
+
+Two client replays of custom air duels (game 2.59, 1.8 MB and 2.5 MB, header
+`version` `0x00018C1C`) gave these results. [verified, 2026-10]
+
+- **The zstd frame has no content size.** `ZSTD_getFrameContentSize` gives
+  "unknown". A decoder that then uses a fixed output buffer fails when the
+  stream is larger. `@bokuweb/zstd-wasm` `decompress()` uses a 1 MiB default
+  and fails with error code -70 (destination too small). Use a streaming
+  decoder, or give a larger buffer. Server parts are small, so they did not
+  show this problem.
+- **The ECS uid link does not decode.** The `aircraft+player_unit` entities
+  give no `uid`, `playerId`, or unit name with the 2.58 component layout. The
+  flight stream (type 2) still decodes and gives one track for each aircraft
+  unit id. One unit id holds all the rounds of a duel.
+- **The kill record ties a unit id to a player.** The kill message is an MPI
+  (type 4) packet whose payload starts with `02 58 58 F0`, then a 32-field
+  `IdFieldSerializer` table. The fields that were checked:
+
+  | Field | Type | Meaning |
+  |---|---|---|
+  | 1 | `uint32` | Killer's player slot index (the slot table index). `0xFFFFFFFF` when there is no killer. |
+  | 2 | string | **Killer's** vehicle name, for example `f_16a_block_15_adf`. Empty when there is no killer (a crash). |
+  | 3 | `uint16` | Victim unit id (low 11 bits), the same id as the flight stream. |
+  | 4 | `uint16` | Killer unit id (low 11 bits). `0xFFFF` for a crash with no killer. |
+  | 10 | string | Weapon or round name, for example `ap_i_t` or `he_frag_i`. |
+  | 11 | `uint32` | Not a player id. Values 0 to 10 were seen. Meaning not known. |
+
+  Fields 1 and 4 together give the unit id of each player who scores a kill.
+  The kill counts that this gives agree with the kills and deaths in the
+  results BLK.
+
+  Field 2 names the killer's vehicle, not the victim's, although decoders
+  often call it the victim unit. Five client replays of duels were checked
+  against the pilots' own report of who flew what. With field 2 read as the
+  victim's vehicle, the two pilots got each other's aircraft in every file.
+  Read as the killer's vehicle, every file was correct. Crash records, which
+  have no killer, have an empty field 2. [verified, 2026-10]
+- **Two MPI messages carry hits.** They use the same 32-field table after a
+  4-byte signature.
+  - `02 58 56 F0` is damage with an attacker. Field 1 is the victim unit id,
+    field 3 the victim vehicle name, and field 4 the attacker unit id
+    (`0xFFFF` when there is no attacker, then field 5 is 1). It occurs in both
+    directions, but only a few times in each round.
+  - `02 58 18 F1` is a hit by the replay author (the hit marker). Field 1 is
+    the target unit id, and field 2 is a `uint16` with an unknown meaning
+    (maybe the part that was hit). It comes in bursts, often several messages
+    in the same millisecond. In a duel where the author died three times to
+    gunfire, no message named the author's unit, and all of them named the
+    opponent. So a client replay gives the author's hits on others, but not
+    the hits that others make on the author.
+- **The ECS create record names the vehicle.** In the type 6 packets that
+  create a player aircraft, the vehicle name (a length byte, then the name) is
+  followed by a mission slot name such as `t2_player03_0` (also with a length
+  byte). There is one record for each player aircraft. A player who never dies
+  has no kill record with a vehicle name, so this record is the only source of
+  that vehicle name that was found.
+- **The results BLK of a client replay** holds `timePlayed`, `authorUserId`,
+  `author`, an empty `matchingInfo`, a `player` list (`name`, `clanTag`,
+  `userId`, `team`, `kills`, `deaths`, `assists`, `score`, and more; unused
+  rows have `userId` `-1`), and `uiScriptsData`. It has no `crafts_info`, so it
+  does not name the vehicles.
+- **The settings BLK of a client replay** (binary BLK, the same format as the
+  results BLK) holds the mission settings: `name`, `level`, `type` (for example
+  `domination`), `chapter`, `environment`, `weather`, `timeLimit`,
+  `scoreLimit`, `userMission`, `allowedUnitTypes`, `missionType` flags, and
+  `stars` (date, time and position). It has no gun-lock or weapon-delay value.
+- **A mission's gun lock is not in the replay.** Two client replays of a
+  custom air-duel mission with a TSS-style gun lock (25 rounds) were checked.
+  No packet kind marks the unlock: none occurs 28 to 32 s after the round
+  starts more often than at control offsets, and no packet text names a lock,
+  a timer or a countdown. The mission script enforces the lock on the server.
+  It shows only in the hits: the earliest hit in a round came 21.5 s after the
+  MPI message `02 58 37 F0` and about 29 s after the previous round's kill.
+  `02 58 37 F0` occurs once per round, 6 to 8 s after the kill that ended the
+  previous round, so it is probably the respawn. [verified, 2026-10]
+
+### 2.8 Kill credit in a mid-air collision
+
+In a mid-air collision that one aircraft survives, the game gives the kill to
+the aircraft that survives. The kill record has no weapon and no crash flag.
+At the same moment, the victim gets a damage record with no attacker
+(attacker id 0). In the clearest case, the death reason was "burn" ("Plane
+burnt down"), 0.7 s after a head-on pass with an estimated miss distance of
+2 m. The guns of that duel were still locked, and neither aircraft fired. The
+scoreboard counts the collision as an air kill for the survivor.
+
+Thus a kill with no weapon is not always a crash or a shoot-down. A check for a
+near pass (tens of meters) in the second before the death finds these
+collisions. In about 700 TSS air duels, 4 more such kills were found.
+[verified on one battle in detail, 2026-10]
 
 ---
 
