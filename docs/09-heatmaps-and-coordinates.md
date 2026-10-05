@@ -41,6 +41,26 @@ Checks on TSS air-duel tracks:
 
 [verified, 2026-10 data]
 
+**Angle of attack and gun aim.** The angle between the nose and the flight
+path, measured in the lift plane, grows with the load factor and stops at a
+limit. In about 700 TSS duels (props and jets together) it stops near 12–14°.
+Jets fly up to about 25° at low speed. The angle per g falls fast with speed:
+for the F-15A it is about 10.7°/g at 50–75 m/s, 2.9°/g at 125–150 m/s and
+0.55°/g at 250 m/s. A prop at high speed can fly a little nose-low, from its
+wing incidence.
+
+The guns fire along the nose, not along the flight path. At 1,381 gun hits in
+those duels, the lead error of the nose had a median of 1.4–3.3° (by speed
+band), and the lead error of the flight path had a median of 4–9°. At the
+hits, the shooters flew a median 9.5° angle of attack at only 1.5 g: most gun
+hits come from slow jets at high angle of attack. A model that aims along the
+flight path misses most real gun solutions. [verified, 2026-10 data]
+
+**Load factor at low speed.** F-15A and F-15J tracks pull a lift load of 1.43 g
+at 40–50 m/s, 1.78 g at 50–60 m/s and 2.21 g at 60–70 m/s (97th
+percentile). The path turns at most about 23–28°/s at every speed from 40 to
+130 m/s. [verified, 2026-10 data]
+
 Aircraft meshes from the game use `+X` nose, `+Y` up, `+Z` right wing.
 Example: the F-15A canopy is at `x` +5.1 m, the tail at -5.9 m, and the left
 wing at `z` -5.5 m. [verified, 2.58]
