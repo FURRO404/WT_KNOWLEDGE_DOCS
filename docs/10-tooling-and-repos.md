@@ -62,3 +62,33 @@ match statistics.
   [02-file-formats.md](02-file-formats.md).
 - `War-Thunder-Datamine` tracks the game version, at 2.58.0.24 at the time of
   this document.
+
+## Native Linux client window behavior
+
+- The native Linux client (`linux64/aces`) has two window backends, X11 and
+  Wayland. X11 is the default, so on a Wayland desktop the game runs through
+  XWayland. In its X11 mode the window class (`WM_CLASS`) is
+  `War Thunder (Vulkan, 64bit)`, and the renderer name is part of that string.
+- At start the client checks `XDG_RUNTIME_DIR`. If it is set, the log shows
+  `wayland: present because XDG_RUNTIME_DIR found`. The client then reads
+  `linux{ wayland:b }` from `config.blk` (default `no`) and looks for a
+  `wayland` command-line argument. If neither is set, the log shows
+  `wayland: use x11 due to configuration`. [verified: disassembly and 90 client
+  logs, all with X11; the Wayland mode was not tested, and the exact argument
+  form, probably `-wayland`, was not checked]
+- The notes below on minimizing and rendering come from the X11 mode.
+- The client minimizes its own window when it loses focus. It does this in both
+  the Fullscreen and the Windowed display modes. The binary imports
+  `XIconifyWindow`, and no in-game setting turns this off.
+- The client also stops rendering while it is unfocused. A KWin rule that
+  forces "Minimized" to No keeps the window on screen, but the window shows a
+  frozen frame. To keep it drawing, run the game nested inside gamescope. The
+  game then keeps focus inside gamescope all the time.
+- The Linux launcher (`launcher`, a sciter/GTK program) starts the game with
+  glib's `g_spawn_async`. Its update settings define the command line: on Linux
+  it is `linux64/aces -forcestart -add_file_to_report "<launcher log path>"`,
+  run from the game folder.
+- The launcher hides the "Fullscreen (windowed)" display mode on Linux. It
+  offers only Fullscreen and Windowed there, and the default is Fullscreen.
+- Launcher command-line flags found in the binary include `-justupdate`,
+  `-appid`, `-localversion`, `--silent`, `--lang` and `--log`.
