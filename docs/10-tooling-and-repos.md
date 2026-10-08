@@ -69,18 +69,33 @@ match statistics.
   Wayland. X11 is the default, so on a Wayland desktop the game runs through
   XWayland. In its X11 mode the window class (`WM_CLASS`) is
   `War Thunder (Vulkan, 64bit)`, and the renderer name is part of that string.
-- At start the client checks `XDG_RUNTIME_DIR`. If it is set, the log shows
-  `wayland: present because XDG_RUNTIME_DIR found`. The client then reads
-  `linux{ wayland:b }` from `config.blk` (default `no`) and looks for a
-  `wayland` command-line argument. If neither is set, the log shows
-  `wayland: use x11 due to configuration`. [verified: disassembly and 90 client
-  logs, all with X11; the Wayland mode was not tested, and the exact argument
-  form, probably `-wayland`, was not checked]
-- The notes below on minimizing and rendering come from the X11 mode.
+- At start the client checks for a Wayland session. In build 2.59.0.54 it
+  reads `XDG_SESSION_TYPE` and logs
+  `wayland: present because XDG_SESSION_TYPE value = wayland`. Some other
+  builds check `XDG_RUNTIME_DIR` and log
+  `wayland: present because XDG_RUNTIME_DIR found`.
+- Next it reads `linux{ wayland:b }` from its settings and then looks for a
+  `-wayland` command-line argument. If neither is set, it logs
+  `wayland: use x11 due to configuration`.
+- `linux{ wayland:b=yes }` in `config.blk` has no effect. The client loads
+  `config.blk` over its built-in `settings.blk`, and it accepts only the keys
+  that file allows. It logs
+  `Settings: '(null)/linux' is not allowed for overwrite! check settings.blk`
+  and drops the block.
+- The `-wayland` argument works. The argument parser is Dagor's standard one,
+  so `--wayland` works too. With it, the log lists each `wayland: output` with
+  its scale, and the client opens a native Wayland window.
+- Wayland mode reads the integer `wl_output` scale. With KDE fractional scaling
+  (for example 135%, which is reported as scale 2), the window comes out
+  oversized and spills past the monitor.
+- Wayland mode does not fix the focus problem. The client still stops
+  rendering when it loses focus. [tested on KDE Plasma 6, Wayland session]
+- The notes below on minimizing come from the X11 mode.
 - The client minimizes its own window when it loses focus. It does this in both
   the Fullscreen and the Windowed display modes. The binary imports
   `XIconifyWindow`, and no in-game setting turns this off.
-- The client also stops rendering while it is unfocused. A KWin rule that
+- The client also stops rendering while it is unfocused, in both X11 and
+  Wayland mode. In X11 mode, a KWin rule that
   forces "Minimized" to No keeps the window on screen, but the window shows a
   frozen frame. To keep it drawing, run the game nested inside gamescope. The
   game then keeps focus inside gamescope all the time.
