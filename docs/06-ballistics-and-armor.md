@@ -443,11 +443,240 @@ math. Confidence: **Partial** (fields known, mechanism not solved).
 
 The shell BLK names a secondary shatter preset (`secondaryShattersPreset`). The
 preset resolves into `gamedata/damage_model/secondary_shatter_presets.blk`. The
-`ap` preset carries residual-penetration and caliber-to-armor multipliers for
-post-penetration shatter. The BLK also carries a `stabilityThreshold` field.
+same presets are also in `config/damagemodel.blk` under `secondaryShatters`.
+The BLK also carries a `stabilityThreshold` field.
 
-The notes do not give an explicit spall-cone half-angle or fragment-count
-formula. Confidence: **Not reverse-engineered** as a geometric cone.
+The file holds 19 presets: `default`, `ap`, `ap_rocket`, `ap_large_caliber`,
+`ap_small_arms`, `ap_solid_medium_caliber`, `apds_fs_long`, `apds_fs`,
+`apds_fs_25_76mm`, `apds`, `atgm_ke`, `apcr`, `heat`, `heat_fs`, `atgm`,
+`heavy_heat_warhead`, `170mm_heat_warhead`, `hesh`, `efp`.
+
+Each preset is a set of cone sections plus scale curves. A section is:
+
+```
+sectionN {
+  angles = [inner_deg, outer_deg]   # cone, or a ring when inner > 0
+  shatter {
+    distance = <m>
+    count = <n>          # or countPortion = <fraction> in mass-based presets
+    penetration = [a, b] # mm
+    damage = [a, b]
+    size, onHitChanceMult, onHitChanceMultFire, onHitChanceMultExplFuel,
+    aggregateDamage, shellShatter
+  }
+}
+```
+
+Example, preset `ap`:
+
+| Section | angles | distance | count | penetration | damage |
+|---|---|---|---|---|---|
+| 0 | [0, 10] | 5 | 8 | [11, 8] | [20, 15] |
+| 1 | [0, 25] | 3 | 20 | [7, 5] | [15, 12] |
+| 2 | [0, 40] | 1.5 | 40 | [4, 3] | [8, 6] |
+
+Example, preset `apds_fs_long` (DM53): section 0 `[0,5]`, count 10, pen
+`[17,10]`; section 1 `[7.5,14.5]` (a ring), count 45, pen `[10,8]`; section 2
+`[5,50]`, count 50, pen `[4,3]`.
+
+Scale curves in a preset:
+
+- `residualArmorPenetrationToShatterCountMult`
+- `residualArmorPenetrationToShatterPenetrationMult`
+- `residualArmorPenetrationToShatterDamageMult`
+- `caliberToArmorToShatterCountMult`
+- mass-based presets (`ap_large_caliber`, `apds`, `apcr`): `armorMassToShatterCount`,
+  `shellMassToShatterCount`, `residualPenetrationTo{Armor,Shell}Shatter{Penetration,Damage}Mult`.
+  These presets split the fragments into `section_shellShatters*` and
+  `section_armorShatters*` by `countPortion`.
+
+Example `ap`: count curve `[20, 100, 0.5, 1.0]`. The 4-value curves look like a
+clamped linear map `[x0, x1, y0, y1]`, with residual penetration in mm as `x`.
+This reading is an inference, not confirmed in the binary.
+
+Global shatter values in `config/damagemodel.blk`:
+
+```
+minSecondaryShatterAngleFromArmor = 15.0
+shattersMinSolidArmorThicknessMult = 0.5
+shatterProbeDist = 0.1
+maxShatterEffectiveMult = 3.0
+armorFragmentsThicknessThreshold = 3.3
+armorFragmentsPierceThreshold = 90.0
+secondaryShatterWithoutPenetration = [20, 5, 0, 0]
+```
+
+`secondaryShattersWithoutPenetration` holds a separate small cone for a hit
+that does not penetrate (presets `default`, `ap`, `apds`).
+
+Armor classes control the spall per plate:
+
+- `createSecondaryShatters = false` stops a plate from making a cone. Many
+  composite and high-hardness plates set it.
+- `secondaryShatterArmorQuality` and `secondaryShatterEffectiveThicknessMax`
+  set how a part stops fragments. A spall liner (`armour_aramide_fabric`) has
+  `secondaryShatterEffectiveThicknessMax = 6.0`.
+
+The binary strings include the debug line
+`secondary shatters from %s in angles %f|%f`, and the parser checks that
+`angles should be in the range from 0 to 180`.
+
+#### Runtime behavior (confirmed live)
+
+These rules come from live debugger captures of 57 mm APCBC (preset `ap`)
+hits on a T-55A side in a test drive, build 2.59.0.54. They cover about 10
+penetrations and about 260 fragments.
+
+- **One cone for each perforated plate.** A shell that passes two plates makes
+  two cones, each from its own exit point. A hit that does not penetrate (a
+  stop or a ricochet) makes no secondary shatter cone in this path.
+- **Cone axis = shell flight direction.** It is not the plate normal. On a side
+  plate hit at 38 degrees off the normal, the axis was 38 degrees off the
+  normal too. The axis stays the same on the second plate of the same shot.
+- **Each section is a full cone from `angles[0]` to `angles[1]`.** The sections
+  overlap; they are not rings unless `angles[0] > 0`. The parser stores
+  `cos(angles[1])` and `cos(angles[0])`.
+- **Directions are uniform in solid angle.** The value
+  `u = (1 - cos(theta)) / (1 - cos(outer))` averages 0.49-0.50 over 134
+  fragments (0.5 is uniform solid angle). The azimuth is uniform over 360
+  degrees.
+- **All fragments start at the hit point.** The origin offset is 0.
+- **Fragment range = section `distance`**, exactly, with no random part.
+- **Scale curves are clamped linear maps** `[x0, x1, y0, y1]`, with
+  `x = residual penetration` in mm. Example `ap`: a residual of 53.5 mm gives a
+  penetration multiplier of 0.7676 and a damage multiplier of 0.6514. Both values
+  match the curves at the same `x`.
+- **Fragment count** = `count * countMult(residual) * calMult(caliber/armor)`,
+  then rounded (possibly at random). The default `caliberToArmorToShatterCountMult`
+  is `[0.5, 1.0, 0.5, 1.0]`. At the clamps (residual <= 20 mm, ratio <= 0.5)
+  the `ap` counts were exactly `8/20/40 * 0.25 = 2/5/10`.
+- **Resolved section record (0x48 bytes):** `+0x04` count (int), `+0x08`
+  cos(outer), `+0x0c` cos(inner), `+0x10` distance, `+0x14` penetration low,
+  `+0x18` penetration high, `+0x1c` damage first, `+0x20` damage second,
+  `+0x24` `onHitChanceMultFire`, `+0x28` `size`.
+- **Fragment record (0x70 bytes):** `+0x04` world origin, `+0x10` world
+  direction, `+0x1c` range, `+0x20` unit-local origin, `+0x2c` unit-local
+  direction, `+0x38` range. The rest is zero before the trace stage. The
+  fragment carries no own penetration or damage. Those come from the section.
+
+More confirmed rules (125 mm APFSDS, HEAT-FS, and HE-FS on a Leopard 1 side):
+
+- **The inner angle cuts a hole.** All 311 fragments of the `apds_fs_long`
+  section `[7.5, 14.5]` fell between 7.5 and 14.5 degrees. Every cone type tested
+  (`[0,5]`, `[0,10]`, `[0,25]`, `[0,40]`, `[5,50]`, `[7.5,14.5]`) is uniform in solid
+  angle between its inner and outer angle.
+- **Count rounding:** `round(count * countMult * calMult)` in float. Example
+  `10 * 1.5 * 0.9` = 13.4999 gave 13; `45 * 1.5 * 0.9` = 60.75 gave 61.
+- **Sabot petals make their own spall.** An APFSDS hit at short range on a thin
+  side plate made three more cones from the `apfsds_sabot` bullet (preset `ap`,
+  `segmentCount 3`) at the entry point.
+- **A HEAT jet makes a spall cone at each plate it perforates** (preset `heat_fs`
+  from `cumulativeSecondaryShattersPreset`). Section 0 has flag byte `0x00`
+  (`shellShatter`, the jet itself) and section 1 has `0x01` (armor fragments).
+  The values drop on later plates as the jet weakens.
+- **Some fragments are removed after the draw.** A few cones held fewer
+  fragments than their count (for example 54 of 90 on an internal plate). The
+  rule is not known.
+
+#### Warhead body fragments ("real shatters")
+
+A shell with `damage.shatter { useRealShatters = true ... segment[] }` (HE,
+HEAT) makes body fragments when the warhead bursts. The code path is
+`prepare_real_shatters`, and it uses the same fragment generator. The axis is
+the shell direction, and the origin is the burst point. Confirmed rules:
+
+1. `m = explosiveMass * brisanceEquivalent` (the TNT equivalent for fragments).
+2. `fill = m / mass`. The class is the first entry in
+   `explosiveTypeToShattersParams` whose `fillingRatio >= fill`. There is no
+   blend between classes.
+3. Base range `R = explosiveMassToRadius(m)`, base penetration
+   `P = explosiveMassToPenetration(m)`, damage `D = explosiveMassToDamage(m)`
+   (linear interpolation over the points).
+4. `N = bodyMassToShattersCount(mass - m) * shatter.countPortion`.
+5. Each segment gets `round(N * segment.countPortion)` fragments in its
+   `angles` band, range `R * radiusScale`, penetration `P * penetrationScale`,
+   and damage `D * damageScale`. Directions are uniform in solid angle.
+
+Checks: 125 mm 3BK18M (19 kg, 1.754 kg `ocfol`, brisance 1.47) gives
+`m = 2.578`, class `he_heat`, `N = 1200` (24/60/816/240/60), `R = 23.24`,
+`P = 6.824`, `D = 12.035`. 125 mm 3OF26 (23 kg, 3.402 kg `a_ix_2`, brisance 1.4)
+gives `m = 4.763`, class `bombs_he_sap`, `N = 2099`, `R = 33.81`, `P = 5.881`,
+`D = 9.514`. All values match the live capture.
+
+#### APHE burst ("synthetic shatters")
+
+Confirmed live with 75 mm PzGr 39/42 (6.8 kg, 0.017 kg `h10`, brisance 1.4)
+into a KV-2 side:
+
+- **The fuse delay starts at the first plate.** The burst was 1.210 m past the
+  entry point (`fuseDelayDist = 1.2`).
+- **The kinetic trace runs first.** In the same frame, the shell body went on
+  past the burst point, perforated the far side 1.86 m from entry, and made a
+  second spall cone. The burst came after both cones. This fits
+  `checkIntegrityAfterExplosion = true`.
+- **APHE uses synthetic (statistical) shatters, not fragment rays.** The shell
+  has no `damage.shatter` block; the `testProperties` segments and their
+  `countPortion` are not used. The game calls
+  `damage_by_synthetic_shatters_processing` with a params struct:
+  `+0x04` range R, `+0x08` count N, `+0x0c` penetration P, `+0x10` damage D,
+  `+0x14` damage type. R squared is also stored next to R.
+- The values come from the same rules as real shatters (steps 1-4 above,
+  without `countPortion`). Prediction before the test: `m = 0.0238`, class
+  `aphe_hc`, `R = 1.6816`, `N = 199.08`, `P = 3.69`, `D = 5.4358`. Live values:
+  `1.68158, 199.076, 3.69, 5.43579`.
+
+Still open: how the statistical model turns N, R, P, and D into hits on parts.
+
+#### Fragment flight through parts (confirmed live)
+
+After the draw, the game traces each fragment ray against the collision world.
+Each trace hit is a 0x130-byte record, with the distance `t` at `+0x18` and a
+hit type byte at `+0x28`. Type 2 is a hit on a vehicle DM part, and its handler
+is `0x6164290`. Each fragment has a 0x50-byte state:
+
+| Offset | Field |
+|---|---|
+| `+0x00` | fragment index |
+| `+0x04` | range |
+| `+0x08` | size |
+| `+0x0c` | armor used so far, in mm |
+| `+0x14` | stop point as a fraction of the range (`t / range`), -1 while flying |
+| `+0x18`, `+0x24` | local and world direction |
+| `+0x31` | stopped flag |
+| `+0x48` | number of parts hit |
+
+- Each part adds its thickness to the armor used. A module adds its
+  `armorThrough` value. Example: a crew member (`steel_tankman`,
+  `armorThrough 3.5`) adds 3.5 mm; a 75 mm hull side adds about 75 mm along the
+  ray.
+- **A fragment stops at the part where the armor used becomes greater than its
+  penetration.** Live example (`ap` preset, 75 mm APHE in a KV-2): section 0
+  fragments (penetration 11 to 8) went through two crew members (7 mm) and
+  stopped in the far side armor. Section 1 fragments (penetration 7 to 5)
+  stopped at the second crew member, at 7.0 mm.
+- Not yet separated: whether a fragment's penetration falls linearly from
+  `pen[high]` to `pen[low]` over its range, or stays at one end. Both fit all
+  40 recorded hits.
+- **Fragments near the plate surface are kept.** On a shot 51.5 degrees off
+  the normal, fragments 6.4 and 7.8 degrees from the plate surface stayed.
+  `minSecondaryShatterAngleFromArmor` (15) probably clamps the cone axis
+  instead; this needs a penetration at more than 75 degrees to test.
+
+#### Trace pattern (`traceStrategy`)
+
+The parsed table has one 0x20-byte row for each pattern: `minCaliber`,
+`circleCount`, `pointCount`, a pointer to the points, and their count. The
+points are stored as `(sin, cos)` pairs already scaled by ring: ring `i` of
+`circleCount` has radius `i / circleCount` (for example 6 points at 0.5 and 12
+points at 1.0 for `circleCount 2`). At each shot, `0x6192ac0` picks the row by
+caliber, copies its points, and stores `1000 * caliber` (the caliber in mm) as
+the scale. Not yet confirmed: whether the outer ring sits at the full caliber
+or at half the caliber.
+
+Still open: how the `[a, b]` penetration and damage pairs apply to one fragment
+(interpolation over range is likely), the random draw for counts, the 15-degree
+`minSecondaryShatterAngleFromArmor` clamp (not yet seen at the angles tested),
+and the RNG.
 
 ### 3.3 HE filler and TNT equivalent
 
@@ -465,8 +694,39 @@ Variable definitions:
   `smoke_composition`).
 - `explosiveMass` is the filler mass in kg.
 
-The notes do not give the TNT-equivalent conversion factor per filler type. Do
-not invent a conversion factor. Confidence: **Not reverse-engineered**.
+The filler factors are in `gamedata/damage_model/explosive.blk`, block
+`explosiveTypes` (116 types). Each type has `strengthEquivalent` and
+`brisanceEquivalent`. Examples: `tnt` 1.0/1.0, `a_ix_2` 1.54/1.4, `rdx`
+1.6/1.4, `comp_b` 1.31/1.27, `hmx` 1.656/1.5.
+
+The same file holds these curves:
+
+- `explosiveTypeToSplashParams`: TNT-equivalent mass to inner radius, outer
+  radius, penetration, and damage. Example: 0.1 kg gives inner 0.275 m, outer
+  0.75 m, damage 110.
+- `explosiveTypeToPressureParams`, `explosiveTypeToPressureOpenParams`: the
+  overpressure curves.
+- `explosiveTypeToShattersParams`: shell-body fragment classes `aphe_sc`,
+  `aphe_hc`, `he_frag`, `he_heat`, `bombs_he_sap`, `bombs_he_frag`. Each class
+  has a `fillingRatio` and the curves `explosiveMassToRadius`,
+  `explosiveMassToPenetration`, `explosiveMassToDamage`, and
+  `bodyMassToShattersCount`.
+
+The binary checks the filler-to-mass ratio against the class maximum. Its error
+text is `dm::shatter: fillingRatio %.3f >= max %.3f`. The debug line for an ammo
+explosion prints `shellMass`, `strengthEquivalent`, `brisanceEquivalent`, the
+splash radii, splash penetration and damage, and the shatter radius, count,
+penetration, and damage.
+
+`config/damagemodel.blk` also holds:
+
+- `penetrationByExplosiveMassModifier`: filler ratio to a penetration
+  multiplier, `[[0.0065,1.0],[0.016,0.93],[0.02,0.9],[0.03,0.85],[0.04,0.75]]`.
+- `shellIntegrityAfterExplosionByExplosiveMass = [75, 400, 0.35, 0.85]`.
+
+Confidence: **Confirmed** for the data. **Partial** for the runtime use. The
+code that picks the fragment class and that converts the mass to TNT
+equivalent is not traced.
 
 ### 3.4 HEAT standoff
 
@@ -477,6 +737,123 @@ include `cumulative` (HEAT), `explosiveFormedProjectile` (EFP), and
 
 The notes do not give a HEAT standoff-versus-penetration formula, and they do
 not give a cumulative jet decay constant. Confidence: **Not reverse-engineered**.
+
+### 3.5 Module, crew, and ammo damage data
+
+Each tank BLK (`gamedata/units/tankmodels/*.blk`) gives every DM part an `hp`,
+an armor class, and damage multipliers. The values come mostly from shared
+templates. Examples from a modern tank:
+
+| Group | hp | Other fields |
+|---|---|---|
+| crew | 40 | `steel_tankman`, `genericDamageMult 3.0` |
+| ammo | 300 | `armorThrough 10`, `genericDamageMult 2.0`, `fireProtectionHp 20` |
+| fuel_tanks | 400 | `armorThrough 12`, `fireParamsPreset fuel_internal` |
+| power_block | 100 | `armor_tank_engine`, thickness 150 |
+| cannon_breech | 150 | thickness 150 |
+| tracks | 300 | `genericDamageMult 1.8` |
+| hull_spall_liner | 200 | `armour_aramide_fabric`, thickness 20 |
+
+`DamageEffects.part` holds the hit rules. Each rule has a damage type, a
+damage threshold, and probabilities. Examples for ammo: `onHit {cumulative,
+expl 0.4, fire 0.5, damage 75}` and `onKill {generic, expl 0.5, full_expl 0.1,
+fire 0.4}`. A rule can also kill a linked part, for example a wheel kills the
+track.
+
+The `ammo` block sets the ammo explosion: `detonateProb`, `detonatePortion`,
+`explodeHitPower`, `explodeArmorPower`, `explodeRadius`. `MetaParts` and
+`compartments` spread pressure damage to the crew.
+
+`config/damagemodel.blk` sets the global values `ammoExplosionProb`,
+`ammoStowageDetonatePortion`, `fuelExplosionRangeK`, and the curve
+`kineticEnergyToDamage` (32 points, from `[100, 2]` to `[5e8, 40000]`).
+
+Confidence: **Confirmed** for the data. **Not reverse-engineered** for the
+runtime use of the thresholds.
+
+### 3.6 Saved hit files (`ReplayHits`)
+
+The client saves a hit as a text BLK in the `ReplayHits` folder of the game
+directory. The hit camera and Protection Analysis both write this format. The
+Protection Analysis UI loads a file again with `repeat_shot_from_file` (see
+`scripts/dmviewer/protectionanalysis.nut`). The UI shows the save button only
+with the `HitsAnalysis` feature on a PC.
+
+Fields:
+
+```
+version:i, time:r, damageRole:t ("victim" or "offender")
+offender:t, victim:t                 # player names
+object:t                             # victim unit
+offenderObject:t, spawnerObject:t
+weapon:t                             # weapon BLK path
+ammo:t, ammoType:t                   # shell name and projectile type
+bulletSetNo:i, ammoNo:i, isBelt:b, supportGun:b
+lPos:p3, lDir:p3                     # hit point and direction, unit-local
+pos:p3, dir:p3                       # world values
+speed:r or startVel:p2               # impact speed, or muzzle speed and angle
+startAltitude:r
+travelDistance:r, distance:r, shotDistance:r
+piercingShift:r, justExplosion:b, testProperties:b
+seed:i                               # random seed for the hit
+isSabot:b, isSecond:b
+turretPos { pos:p2 ... }             # turret and gun angles
+parts {
+  size:i                             # part count of the victim
+  part:ip3 = index, 65535, state     # parts that are not at full health
+  disabled:i = index                 # parts that are dead or removed
+}
+```
+
+A file from a battle hit has `version 8` and the `turretPos` and `parts`
+blocks. A file saved in Protection Analysis has `version 0` and no part state.
+
+The `state` value is a multiple of 4096 in the files seen (0 to 61440). It
+looks like a part health value in 1/16 steps. This is an inference.
+
+The `seed` field means the post-penetration result is a seeded random draw.
+A file is a test case: the same shot, seed, and part state must give the same
+result in the game.
+
+### 3.7 Binary anchors (build 2.59.0.54)
+
+The binary is non-PIE at base `0x400000`, so code loads string addresses as
+32-bit immediates. These code addresses load the shatter strings. They change
+with each patch.
+
+| String | Code reference |
+|---|---|
+| `secondary shatters: angles should be in the range from 0 to 180` | `0x61e0353` |
+| `caliberToArmorToShatterCountMult` | `0x61e0863`, `0x61e08bf` |
+| `residualArmorPenetrationToShatterCountMult` | `0x61e08cc`, `0x61e2731`, `0x61e2819` |
+| `armorMassToShatterCount` | `0x61e0961` |
+| `shellMassToShatterCount` | `0x61e099c` |
+| `secondaryShattersPreset` | `0x61e0b92`, `0x61e0bdc` |
+| `minSecondaryShatterAngleFromArmor` | `0x6169b71` |
+| `createSecondaryShatters` | `0x18698f5`, `0x61a89ed`, `0x61a89fd` |
+| `fuseDelayDist` | `0x224ca14`, `0x224ca2c`, `0x61f70c9` |
+| `explodeTreshold` | `0x224ca76`, `0x224ca8e`, `0x61f70e0` |
+| `------SHATTER HIT------` | `0x2a7cb9a` |
+
+Runtime functions (same build):
+
+| Address | Role |
+|---|---|
+| `0x61e02b0` | section parser (stores cos of the angles) |
+| `0x61e0840` | preset curve parser (residual mode or mass mode) |
+| `0x6169b60` | global shatter config parser (stores `1 - cos(minSecondaryShatterAngleFromArmor)`) |
+| `0x6166360` | `shatter__prepare_shatters`: makes the fragment rays from the resolved sections; axis at `ctx+0x130`, sections at `ctx+0x158`, count at `ctx+0x168` |
+| `0x18580f0` | caller of `0x6166360` |
+| `0x6169450` | `shatter__spawn_processing` (not called for AP spall in a test drive) |
+| `0x619aeb0` | `prepare_real_shatters` (warhead body fragments); calls `0x6166360` from `0x619b0ea` |
+| `0x185d330` | `do_splash_and_synthetic_shatters_damage` (burst entry) |
+| `0x61ace90` | `damage_by_synthetic_shatters_processing` (APHE statistical shatters) |
+| `0x615aac0` | `traceStrategy` parser |
+| `0x620e3e0` | trace ring builder: ring `i` of `circleCount` gets `pointCount * i` points at equal angles |
+| `0x6192ac0` | per-shot trace shape: picks the pattern by caliber, copies its points |
+| `0x00b498a0` | traces the fragment rays against the collision world |
+| `0x184c600` | applies fragment hits by type (0 and 1: other, 2: DM part, 3: rendinst, 4 and 5: destructibles) |
+| `0x6164290` | fragment vs vehicle DM part |
 
 ## 4. Armor interaction
 
@@ -612,9 +989,12 @@ these native numbers as calibration points.
 | Normalization term | `projectile_types/*.blk` field | Partial |
 | Overmatch standalone rule | not found | Not reverse-engineered |
 | Fuse `fuseDelayDist`, `explodeTreshold` | shell BLK | Partial |
-| Spall cone geometry | `secondary_shatter_presets.blk` (fields only) | Not reverse-engineered |
+| Spall cone data layout | `secondary_shatter_presets.blk` | Confirmed |
+| Spall cone runtime (axis, random draw) | not traced | Not reverse-engineered |
 | HE filler `explosiveMass`, `explosiveType` | shell BLK | Partial |
-| TNT-equivalent factor | not found | Not reverse-engineered |
+| Filler strength and brisance factors | `explosive.blk` `explosiveTypes` | Confirmed (data) |
+| Module hp and hit rules | tank BLK `DamageParts`, `DamageEffects` | Confirmed (data) |
+| Saved hit file format | `ReplayHits/*.blk` | Confirmed |
 | HEAT standoff formula | not found | Not reverse-engineered |
 | LOS `plate/cos(angle)` | live point + physics | Confirmed |
 | `armorEffectiveThicknessMax` cap | binary parser `0x59748d0` | Confirmed |

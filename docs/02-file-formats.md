@@ -626,6 +626,16 @@ Command:
 clog_unpack.exe -i some_log.clog -k keyfile.bin -o out_log.log
 ```
 
+The game client log uses a key of 128 bytes. You can get the key from the log
+itself, because the plain text has many spaces. For each column `i mod 128`,
+take the most frequent cipher byte and XOR it with `0x20`. The result is the key
+byte for that column. The first decoded line is `BUILD TIMESTAMP:`. Tested on
+build 2.59.0.54. The native Linux client writes its logs to
+`~/.config/WarThunder/.game_logs/*.clog`.
+
+A decoded log shows the mission file and the level of a test drive, for example
+`Load mission 'testFlight_...' ... from file 'gamedata/missions/training/testflight/tank/...'`.
+
 ### 3.7 Replays (`*.wrpl`)
 
 A replay is a WRPL container. It holds a settings BLK, a zlib-packed replay

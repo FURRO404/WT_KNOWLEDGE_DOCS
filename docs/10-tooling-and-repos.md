@@ -90,6 +90,10 @@ match statistics.
   oversized and spills past the monitor.
 - Wayland mode does not fix the focus problem. The client still stops
   rendering when it loses focus. [tested on KDE Plasma 6, Wayland session]
+- The native Linux client loads BattlEye. In build 2.59.0.54 the log shows
+  `init anticheat flags: 2` and `[BEAC] Loading DLL from .../linux64/BEClient_x64.so`.
+  A debugger attach or a process memory read can trigger the anti-cheat. Use
+  a copy of the binary for static analysis.
 - The notes below on minimizing come from the X11 mode.
 - The client minimizes its own window when it loses focus. It does this in both
   the Fullscreen and the Windowed display modes. The binary imports
@@ -99,6 +103,12 @@ match statistics.
   forces "Minimized" to No keeps the window on screen, but the window shows a
   frozen frame. To keep it drawing, run the game nested inside gamescope. The
   game then keeps focus inside gamescope all the time.
+- The client has an option to play sound while its window is inactive
+  (`USEROPT_PLAY_INACTIVE_WINDOW_SOUND`). It reacts to the game's own focus
+  state, so it never triggers when the game is nested in gamescope. The client
+  plays audio through FMOD. Its PulseAudio/PipeWire stream is named
+  `FMOD Audio`, with process binary `aces`, so an outside tool can change the
+  game's volume by matching that stream.
 - The Linux launcher (`launcher`, a sciter/GTK program) starts the game with
   glib's `g_spawn_async`. Its update settings define the command line: on Linux
   it is `linux64/aces -forcestart -add_file_to_report "<launcher log path>"`,
