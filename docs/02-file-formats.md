@@ -683,6 +683,87 @@ second reference reader for VROMFS and BLK. It confirms the FAT and SLIM
 flavours, the VROMFS header, the XOR obfuscation, and the `nm` two-digest
 header. Its own README says it is slow and points to `wt_ext_cli` for real work.
 
+### 3.10 Mission files (`*.blk` missions, user missions)
+
+A mission is one BLK. The game's own missions sit in the datamine under
+`mis.vromfs.bin_u/gamedata/missions/`. A user mission is a text `.blk` that the
+CDK Mission Editor writes. [verified, datamine and official wiki]
+
+- Tool: the War Thunder CDK installs into the game folder. The editor starts
+  from `missioned.cmd` in the CDK folder. It saves with Ctrl+M to
+  `<game folder>\UserMissions\<name>.blk`. Localization is a `;`-separated CSV
+  with the `usr_` prefix beside the mission.
+  (https://wiki.warthunder.com/cdk/creation_mission)
+- Top-level blocks, in file order: `mission_settings`, `imports`, `triggers`,
+  `mission_objectives`, `variables`, `dialogs`, `airfields`, `effects`,
+  `units`, `areas`, `objLayers`, `wayPoints`. [verified, datamine 2026-10]
+- An aircraft unit is an `armada` entry in `units`: `name`, `tm` (4x3 matrix,
+  last row is the position), `unit_class`, `weapons`, `bullets0..3`,
+  `bulletsCount0..3`, `crewSkillK`, and `props` with `army`, `count`,
+  `attack_type`, `skill`, `altLimit`, and a `plane` block (`wing_formation`,
+  `ai_skill`, `task`). Seen `ai_skill` values: `NORMAL`, `ACE`, `ROOKIE`,
+  `VETERAN`. Seen `attack_type` values: `fire_at_will`, `hold_fire`,
+  `dont_aim`, `attack_target`, `fire_at_will_air`, `fire_at_will_gnd`,
+  `return_fire`, `fire_zone`. [verified, datamine 2026-10]
+- Logic is triggers only. A trigger has `events` (`initMission`,
+  `periodicEvent{time}`, `timeExpires`), `conditions`, `actions`, and
+  `else_actions`, plus `props` (`actionsType` PERFORM_ONE_BY_ONE or
+  PERFORM_ALL, `conditionsType` ALL or ANY, `enableAfterComplete`). The
+  official wiki says the `periodicEvent` time has two-decimal precision.
+  (https://wiki.warthunder.com/cdk/7436-cdk-mission-editor-triggers)
+- AI air control actions in the game's missions: `unitSetProperties`,
+  `unitAttackTarget`, `unitMoveTo`, `unitSetRoute`, `unitFollowWaypoints`,
+  `unitLoadBehTree` (seen trees: `missionFighter`, `missionAssault`,
+  `missionBomber`, `missionKamikaze`, `instructorBeh`, and others),
+  `unitSetControls`, `unitSetIndication`. `unitSetProperties` keys seen include
+  `accuracy`, `airAccuracy`, `effShootingRate`, `airEffShootingRate`,
+  `targetAir`, `targetGnd`, `attack_type`, `cannotShoot`, `speed`,
+  `lockSpeed`, `isImmortal`, `targetableByAi`, `stealthRadius`, `isDelayed`,
+  `ignoresEnemy`, `maxDeviationAngle`, `aiEnabled`, and a `plane` sub-block
+  with `ai_skill`, `targetDeviation` and `weaponTriggers`. [verified, datamine
+  2026-10]
+- Multiplayer user missions: the size cap is 512 KB, up to 512 units, and
+  `imports` cannot be used.
+  (https://wiki.warthunder.com/cdk/533-multiplayer-mission-creation)
+  A session runs from a mission URL under Custom battles; the host needs
+  "initiator" status, given after a shop purchase over 10 USD/EUR.
+  (https://wiki.warthunder.com/cdk/launch_custom_mission)
+- The full editor list of events, conditions and actions is in the datamine at
+  `webUi.vromfs.bin_u/internal/editor.blkx` (keys `events`, `conditions`,
+  `actions`; each points to a `*.scheme.nut` that the datamine does not hold).
+  [verified, datamine 2026-10]
+- `unitSetControls{controls, value, force, objects}` sets a control on any
+  unit, AI planes included. Seen `controls` values: `power`, `rudder`,
+  `elevator`, `ailerons`, `flaps`, `airbrake`, `gears`, `hook`. Game missions
+  use it to push AI planes into a dive (elevator, ailerons, rudder on an
+  `armada`), also in a multiplayer event mission. [verified, datamine 2026-10]
+- `unitSetProperties{plane{weaponTriggers{trigger, set}}}` holds a weapon
+  trigger (`cannon`, `machine gun`, `rockets`, `bombs`, `gunner`) down or up.
+  [verified, datamine 2026-10]
+- `periodicEvent` times in the game's missions go down to `0.01` s (about
+  2,700 uses), so a trigger can run at close to frame rate. [verified,
+  datamine 2026-10]
+- `unitMoveTo` `move_type` values: `teleport` (most uses), `move`,
+  `zigzag_move`, `use_splines`, `stand`. Other keys: `follow_target`,
+  `follow_offset`, `velocity`, `lookat`, `teleportHeightType`.
+  [verified, datamine 2026-10]
+- State a trigger can test (no condition gives a relative bearing or aspect
+  angle between two units):
+  - `unitDistanceBetween` (`math` `2D`, `3D`, `notNear2D`, `notNear3D`)
+  - `unitsInLineOfSight`
+  - `playerSeesUnit` (`viewAngle`, `distance`, `lineSight`)
+  - `unitWhenReachHeight`
+  - `unitWhenProperties` (`speed`, `throttle`)
+  - `unitWhenControls` (`elevator`, `ailerons`, `rudder`)
+  - `playerWhenOrientation` (`pitch`, `roll`), player only
+  - `playerWhenManeuver` (`barrel_left`, `barrel_right`, `stallLeft`,
+    `stallRight`, `noStall`)
+  [verified, datamine 2026-10]
+- Gaijin's Terms (updated 2026-08-17) §4.1 and §4.3.5 forbid the use of the
+  games, their data or materials to train, test or operate an artificial
+  intelligence without written permission. EULA §3.2.3 forbids software that
+  automates gameplay (bots, macros, scripts). (https://legal.gaijin.net/termsofservice)
+
 ---
 
 ## 4. Tooling summary
