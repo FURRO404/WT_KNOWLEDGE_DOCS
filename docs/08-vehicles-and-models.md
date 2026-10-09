@@ -397,6 +397,24 @@ one. The payload is the same `0xACE50001`-zstd node format that tanks use. The
 collision-mesh parser reads it unchanged. Nodes are named exactly `<part>_dm`,
 one convex hull per DM part.
 
+Newer tank collision resources use a different class, `0xACE50003`. Its name
+table is positional and correct: each 48-byte node record holds its own name
+offset, the names equal the `dm_skeleton` node set (less `root`), and each
+record's local bounding box equals the bounding box of its paired mesh. But one
+node mesh can hold many DM plates. On a modern hull (tested on the M1A1 HC), the
+node count fell and the triangle count rose against the older `0xACE50001`
+file, and one node (`turret_02_top_dm`) covers most of the hull shell. Plates
+such as `body_front_dm` and `superstructure_*` then have no node of their own.
+The 16-bit value after each BVH leaf is a triangle edge-active mask, not a part
+id. It holds 3 bits per triangle (up to 4 triangles per leaf, low triangle
+first), and the top 4 bits are 0. Bit e is the edge from vertex e to vertex
+e+1. A bit is set when the edge is a mesh boundary or a concave edge with a
+dihedral angle above about 4 to 5 degrees. It is clear on flat and convex
+edges. The resource holds no other per-triangle table, so a merged node mesh
+carries no plate id. Do not assume that a node name names the plate under the
+hit. Recover the plate from the layer geometry (thickness and position) or from
+a live capture.
+
 ### 3.4 How the X-ray OBJ is assembled
 
 Assemble per unit, in this order. A later step skips a part base an earlier step

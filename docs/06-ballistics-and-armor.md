@@ -303,7 +303,8 @@ slopeEffect10deg = (10.0, 5.30000019)
 slopeEffect20deg = (20.0, 2.40000010)
 slopeEffect30deg = (30.0, 1.73000002)
 slopeEffect40deg = (40.0, 1.54999995)
-slopeEffect50deg = (80.0, 1.01499999)   # name says 50, x value is 80
+slopeEffect50deg = (50.0, 1.305)        # the key appears twice in the row
+slopeEffect50deg = (80.0, 1.01499999)   # second copy: name says 50, x value is 80
 slopeEffect60deg = (60.0, 1.18499994)
 slopeEffect70deg = (70.0, 1.06400001)
 slopeEffect90deg = (90.0, 1.0)
@@ -336,14 +337,28 @@ BR-412D validation (10 m flat `P_flat = 239.21`, `caliber_mm = 100`):
 - Displayed `60 degrees`: solve `P = 239.21 / S(30, 100/P)`, result `82.0`. The
   screenshot value is `82`.
 
+A parser that keeps only the last copy of a repeated key loses the `(50, 1.305)`
+point. Keep both points.
+
+Live check (October 2026 build, per-part hit records, 125 mm APFSDS with the
+`apds_fs_long` preset on an 80 mm `RHA_tank` hull side): the charge divided by
+`nominal × quality` was 1.00, 1.09, 1.25 and 1.65 at geometric incidence angles
+of 2.4, 22.7, 36.2 and 55.7 degrees. These are the preset values. Across 18
+live points, a monotone cubic interpolation (PCHIP) over the angle fits within
+0.24 %. Linear interpolation between the points overcharges by up to about 11 %
+near 72 degrees.
+
 ### 2.9 Normalization
 
 The shared projectile-type BLK carries a `normalizationPreset` field (see
 `gamedata/damage_model/projectile_types/*.blk`). The reverse-engineering notes
 did not recover a separate numeric normalization term. The stat-card angle
 behavior is fully explained by the `slope_effect.blk` preset table above. Treat
-a distinct normalization angle as folded into the slope table. Confidence:
-**Partial**.
+a distinct normalization angle as folded into the slope table. For APFSDS with
+the `apds_fs_long` preset, the live per-part records show no separate
+normalization term: the slope value at the geometric incidence angle explains
+the charge to within 0.24 %. Confidence: **Confirmed** for `apds_fs_long`,
+**Partial** for full-calibre presets.
 
 ### 2.10 Ricochet probability
 
@@ -735,8 +750,21 @@ include `cumulative` (HEAT), `explosiveFormedProjectile` (EFP), and
 `tandemPrecharge`. The native protection result reports these mechanisms in the
 `penetratedArmor` sum.
 
-The notes do not give a HEAT standoff-versus-penetration formula, and they do
-not give a cumulative jet decay constant. Confidence: **Not reverse-engineered**.
+The notes do not give a HEAT standoff-versus-penetration formula. Confidence:
+**Not reverse-engineered**.
+
+Live check (October 2026 build, 120 mm HEAT-FS `120mm_dm12`, `armorPower` 480 mm,
+`cumulativeDamage.distance` 10 m, 6 shots on an IT-1):
+
+- The shell bursts about 0.2 m before the plate on a direct hit.
+- The jet loses about 88 to 91 mm of penetration per metre of travel. This is
+  about twice `armorPower / distance` (48 mm per metre). Only three readable
+  points support the value.
+- At a plate, the jet is charged `nominal × quality / cos θ`. This shell has no
+  slope preset.
+
+The class field `cumulativeAirArmor` is a possible static source for the loss
+per metre. It is not confirmed.
 
 ### 3.5 Module, crew, and ammo damage data
 
@@ -753,6 +781,31 @@ templates. Examples from a modern tank:
 | cannon_breech | 150 | thickness 150 |
 | tracks | 300 | `genericDamageMult 1.8` |
 | hull_spall_liner | 200 | `armour_aramide_fabric`, thickness 20 |
+
+An `hp` below the root `hp` (10000) does not mark a module. A survey of the
+`DamageParts` of 1256 tank units shows these points:
+
+- Many protective parts set their own lower `hp`: screens (100 to 400), ERA
+  blocks (250 to 350), spall liners (200), firewalls in `inner_armor` (150),
+  tracks (250 to 300), road wheels (250 to 300), and stowage shields (1000).
+- The module parts sit in a small fixed set of groups in every unit: `crew`,
+  `ammo`, `fuel_tanks`, `fuel_tanks_exterior`, `power_block` (engine and
+  transmission), `cannon_breech`, `gun`, `optics`,
+  `commander_panoramic_sight`, and `equipment_body_turret` (turret drives,
+  radio, fire control, electronics).
+- A few units file the same kinds of part under rarer groups, such as
+  `crew_turret`, `engine`, `machine_gun`, or optics under `mask`. Their armor
+  class still marks them: `steel_tankman`, `armor_tank_engine`, `optics_tank`,
+  and `tank_barrel` appear only on crew, engines, optics, and barrels.
+- `armorThrough` alone does not separate modules from plates. Plates use the
+  class default of 1, but some plates set a larger value (for example
+  `armorThrough 100` on the IS-1 and IS-2 1943 mantlet and turret front).
+  `cannon_breech` keeps the default of 1.
+- The `tracks` group sets `allowRicochet: true` (its class `tank_traks` has
+  `false`) and `armorEffectiveThicknessMax 20`. These are plate-model fields.
+
+Confidence: **Confirmed** for the data. How the game itself decides which
+parts are charged `armorThrough` is **Not reverse-engineered**.
 
 `DamageEffects.part` holds the hit rules. Each rule has a damage type, a
 damage threshold, and probabilities. Examples for ammo: `onHit {cumulative,
@@ -923,11 +976,56 @@ low for a plunging or near-normal hit on the NERA sandwich. The effectiveness
 is high for an oblique or frontal hit. A single scalar quality factor cannot
 represent this behavior.
 
-The class `leopard_2a5_turret_nera` is the only class of 347 with
-`armorThrough = 0.01`. All other classes have `armorThrough >= 1.0`. The
-`armorThrough` field at offset +0x10 is the suspect runtime knob for NERA. The
-exact directional formula is **Not reverse-engineered**. Do not use a flat
-`sqrt(genericArmorQuality)` factor for composite classes as an exact number.
+An `armorThrough` value below 0.1 marks a part as mesh-charged. Live records
+show it on more than the class `leopard_2a5_turret_nera`: the M1A1 HC lower
+front composite (360 mm nominal, quality 0.377) and two Leopard 2A5 turret
+composite blocks (440 mm at quality 0.75 and 520 mm at quality 0.55) also carry
+`armorThrough = 0.01`. The per-part charge rule for these parts is in
+section 4.6. Do not use a flat `sqrt(genericArmorQuality)` factor for composite
+classes.
+
+### 4.6 Per-part charge and penetration carry (confirmed live)
+
+Source: per-part hit records read live from the October 2026 Linux client. The
+records were cross-checked against the spall-cone residuals, which match
+`penetration on arrival − charge` exactly. Shell: 125 mm APFSDS with the
+`apds_fs_long` preset. Targets: T-62, M1A1 HC, Leopard 2A5.
+
+Let `T` be the nominal `armorThickness`, `q` the armor quality, `θ` the
+geometric incidence angle between the shell path and the entry face normal,
+`S(θ)` the slope value of the shell's preset, and `chord` the path length
+through the collision mesh.
+
+- **Plain parts:** `charge = q × T × S(θ)`. The game does not use the mesh
+  thickness for these parts. Add-on skirts and screens of class
+  `hull_side_special_armor` follow this rule from their nominal value, even
+  where the mesh is thinner than the nominal. Examples: an M1A1 HC heavy skirt
+  (65 mm, q 0.4) took 35.3 mm, and a Leopard 2A5 turret screen (80 mm, q 0.9)
+  took 86.3 mm.
+- **Mesh-charged parts:** `charge = q × chord × cos θ × S(θ)`. This covers
+  classes with `armorThrough < 0.1` (composites and NERA), parts with
+  `variableThickness`, and engine parts of class `armor_tank_engine`. The
+  `chord × cos θ` term is the mesh thickness along the face normal. Errors were
+  below 0.15 % on all composite records.
+- **Thin crew, equipment and ammo parts:** `charge = q × T`, with no slope.
+- **Caps:** the per-mechanism `{mech}EffectiveThicknessMax` of the class applies
+  after the slope (for example 15 mm for wheels, 20 mm for tracks, 1.1 mm for
+  crew), together with the part's `armorEffectiveThicknessMax`.
+- **Cost:** the shell's penetration drops by the charge on mesh-charged parts,
+  and by `max(charge, armorThrough)` on all other parts. Thus thin modules with
+  `armorThrough = 10` cost 10 mm each, although their charge is below 1 mm.
+- **Carry:** the game does not pass the residual on unchanged. It converts the
+  residual to a speed state and computes the penetration again at the next
+  part, with a random factor. The measured spread of
+  `arrival / previous residual − 1` was −3.9 % to +2.3 % (mean −0.6 %, standard
+  deviation 1.4 %, 32 pairs). This fits a uniform spread of about ±2.5 %, for
+  example from a `pierceDispersion` of 0.05. The first penetration value also
+  gets this spread.
+
+The static read of this build found the armor class fields at `+0x04`
+(`armorThickness`), `+0x18` (`armorThrough`) and `+0x1c` (`armorQuality`). These
+offsets differ from the table in section 4.3, which comes from an older build.
+Confidence: **Static** for these offsets.
 
 ### 4.5 Structural and volumetric checks (native)
 
