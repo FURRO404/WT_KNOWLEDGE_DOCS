@@ -343,10 +343,18 @@ point. Keep both points.
 Live check (October 2026 build, per-part hit records, 125 mm APFSDS with the
 `apds_fs_long` preset on an 80 mm `RHA_tank` hull side): the charge divided by
 `nominal × quality` was 1.00, 1.09, 1.25 and 1.65 at geometric incidence angles
-of 2.4, 22.7, 36.2 and 55.7 degrees. These are the preset values. Across 18
-live points, a monotone cubic interpolation (PCHIP) over the angle fits within
-0.24 %. Linear interpolation between the points overcharges by up to about 11 %
-near 72 degrees.
+of 2.4, 22.7, 36.2 and 55.7 degrees. These are the preset values.
+
+The game builds each slope row at load time. For a key x, the node position is
+`cos(90° − x)` and the node value is `1/S`. The parser rejects `S < 1` and drops
+a node whose position does not rise above the previous node. A lookup is linear
+in `cos θ` between nodes and clamps at the end nodes. S is the reciprocal of the
+interpolated value. The `caliberToArmor` rows are blended linearly on `1/S`.
+Each stored point is a 12-byte triple: position, the inverse of the width to the
+next node, and the value. Across 19 live points, this rule fits within 0.075 %.
+Linear interpolation of S over the angle overcharges by up to about 11 % near
+72 degrees. The blending of several rows is confirmed in the code but not yet
+checked live.
 
 ### 2.9 Normalization
 
@@ -357,8 +365,11 @@ behavior is fully explained by the `slope_effect.blk` preset table above. Treat
 a distinct normalization angle as folded into the slope table. For APFSDS with
 the `apds_fs_long` preset, the live per-part records show no separate
 normalization term: the slope value at the geometric incidence angle explains
-the charge to within 0.24 %. Confidence: **Confirmed** for `apds_fs_long`,
-**Partial** for full-calibre presets.
+the charge to within 0.075 %. A static read of the October 2026 build found no
+normalization term for any shell: the binary does not contain the strings
+`normalizationPreset` or `normalizationAngleModifier`, and the slope lookup
+takes the geometric cosine unchanged. Confidence: **Confirmed** for
+`apds_fs_long` (live), **Static** for full-calibre presets.
 
 ### 2.10 Ricochet probability
 
@@ -383,13 +394,77 @@ The native crosshair result carries a `ricochetProb` float and a `ricochet`
 enum. War Thunder computes ricochet in a code path separate from the
 penetration formula. Confidence: **Confirmed** for the table source and shape.
 
+The armor class can replace the table, but only on a part that has the flag
+`simpleRicochet`. On such a part, if the class has `ricochetAngle > 0`, the
+ricochet chance is:
+
+```
+p = 1 − (cos θ / cos ricochetAngle) ^ ricochetCosinePower   when cos θ < cos ricochetAngle
+p = 0                                                       otherwise
+```
+
+On all other parts, the shell's `ricochetPreset` rows decide (static read of
+the October 2026 build, checked live). In the tank models that were examined,
+no part has `simpleRicochet`, so the preset rows decide for tanks:
+
+- Each row is a curve with nodes at x = sin(key), where the key is the angle
+  from the surface. The game reads the curve linearly in x at cos θ, and
+  clamps it at the ends.
+- The rows are blended linearly on the `caliberToArmor` value
+  `1000 × caliber / (q × T)`.
+- A shell with no preset never ricochets.
+- The roll is made on every plate, not only on the first one. The game skips
+  the roll only when the plate starts 1 cm or less after the end of the
+  previous hit record, for modules, and when the chance is 0. It draws a
+  random number only when the chance is above 0.
+- The ricochet roll comes before the penetration test. A shell with more
+  penetration than the charge can still ricochet. Live check: a 100 mm APBC
+  shell with 239 mm of penetration against a 206 mm charge at 66° on a cast
+  turret side ricocheted. The `apbc` rows give p ≈ 0.77 there. The class rule
+  gives 0.
+- Earlier live points agree with the rows: a 125 mm APFSDS on an 80 mm hull
+  side ricocheted at 80.8° (p 0.90) and did not at 61° (p 0).
+- The damage-model key `ricochetProbabilityModifier` is not read by the
+  October 2026 build.
+
+On a ricochet, the per-part record has state 5. The charge on that record is
+`q × T / cos θ`, with no slope table. After the ricochet the shell keeps
+`ricochetSpeedMul` (a damage-model global, 0.3) of its speed. The record showed
+a speed fraction of 0.300. The shell flies on and can hit other parts.
+
+The penetration that stays after a ricochet is the damage-model curve
+`ricochetPenetrationModifier` at cos θ, read in the same way as the preset
+rows. The curve is 1.0 at 0° from the surface, 0.8 at 20°, 0.35 at 30°,
+0.15 at 40°, 0.05 at 60°, and 0 at 90°. Live check: 239.17 → 148.24 mm at
+cos 0.4053 (factor 0.6198, equal to the curve). A grazing APFSDS case
+(cos 0.161) gave 0.888 against the curve value 0.906. The 2 % difference is
+not explained. For a shell with a `stability` block, the kept penetration is
+also multiplied by the yaw factor, because a ricochet sets a yaw rate. The game
+stores the reduced penetration as an offset on the penetration-by-distance
+table: an inverse lookup gives the table distance of the kept penetration, and
+later arrivals read the table from that point.
+
 ### 2.11 Overmatch rule
 
-The reverse-engineering notes do not document an explicit caliber-versus-plate
-overmatch rule with its own constants. War Thunder encodes the caliber-to-armor
-behavior inside the slope-effect and ricochet preset tables through the
-`caliberToArmor` row axis. Do not invent an overmatch constant. Confidence:
-**Not reverse-engineered** as a standalone rule.
+The game has no "3 × caliber" overmatch rule. A static read of the October
+2026 build found these rules in the per-part charge code:
+
+- **Row selection:** the `caliberToArmor` row ratio is
+  `damageCaliber / B`, with `B = quality × T` (for mesh-charged parts,
+  `quality × chord × cos θ`). The ratio is explicit. Only the stat card solves
+  for the angle penetration implicitly.
+- **Scale cap:** the slope value is capped at `maxArmorEffectiveScale` (20).
+- **Breach:** if `armorBreachK × B ≤ damageCaliber` (`armorBreachK` = 7), the
+  game skips the slope table and uses `min(1 / cos θ, maxArmorEffectiveScale)`.
+- **Gate:** the slope table is used only if `damageCaliber` is larger than the
+  part's `slopeMinCaliber`. The `default_v1` value is 29, but live charges show
+  that darts with a `damageCaliber` of 28 mm and sabot petals of 25 mm still
+  used the table. Thus the default for normal parts is below 25. Two steep
+  petal hits used plain `1 / cos`, possibly on parts with their own higher
+  value.
+
+Confidence: **Static**. No live shot has checked these rules on a full-calibre
+shell yet.
 
 ### 2.12 Penetration versus distance (validation tables)
 
@@ -451,8 +526,32 @@ Variable definitions:
   spells the key `explodeTreshold`.
 - `checkIntegrityAfterExplosion` is a boolean flag.
 
-The reverse-engineering notes do not give the full fuse arming and detonation
-math. Confidence: **Partial** (fields known, mechanism not solved).
+A static read of the October 2026 build gives the arming and burst rules:
+
+- Only a perforated part arms the fuse, and only if its charge (the effective
+  thickness, not the nominal) is strictly above `explodeTreshold`. Module parts
+  can also arm it.
+- A shell that a part stops bursts at that part's face minus the explosive
+  offset, armed or not, even if the delay has not ended.
+- With a delay of 0, the burst is at the arming face minus the offset.
+- If the delay ends inside or in front of a later part, the burst is at that
+  part's face minus the offset. This point is a guess from the code.
+- The burst is never closer than 0.01 m.
+
+Confidence: **Static**, except for the fuse delay distance (1.2 m), which a
+live capture confirmed. A shell with no explosive block probably uses the
+damage-model `defaultExplosionOffset` (0.05 m). This is not confirmed.
+
+Live check (October 2026 build, 100 mm APHE into a tank turret side): the
+fuse armed at the side plate, and the burst came 1.2 m later, between two
+crew parts. The burst is its own event and goes to the damage code through a
+listener that is different from the shell-hit listener. With
+`checkIntegrityAfterExplosion`, the shell flew on after the burst. Its
+penetration at the next part was 0.61 of the value before the burst. Five more
+live points (hull and turret sides, a turret neck) give 0.59 to 0.62. On the
+De Marre curve this is a speed of about 0.70 of the speed before the burst. The
+code that lowers the speed is not found: the burst event path does not write
+the shell's speed state.
 
 ### 3.2 Spall cone
 
@@ -545,9 +644,20 @@ penetrations and about 260 fragments.
 - **One cone for each perforated plate.** A shell that passes two plates makes
   two cones, each from its own exit point. A hit that does not penetrate (a
   stop or a ricochet) makes no secondary shatter cone in this path.
+- **No cone from a part with `createSecondaryShatters: false`.** The cone
+  event builder exits early for such a part at any angle. Skirts, wheels and
+  some outer plates carry this flag, so a shell that perforates them makes no
+  spall behind them.
+- **No 15° clamp on the cone axis.** The damage model value
+  `minSecondaryShatterAngleFromArmor` (15°) is parsed, but no code in the
+  penetration and cone path of the October 2026 build reads it. Live darts
+  that perforated at 14.7° and 13.5° from the surface made cones on the shell
+  line.
 - **Cone axis = shell flight direction.** It is not the plate normal. On a side
   plate hit at 38 degrees off the normal, the axis was 38 degrees off the
   normal too. The axis stays the same on the second plate of the same shot.
+  At 68.4 degrees off the normal (21.6 degrees from the surface) the axis was
+  still the shell line to four digits, not the normal and not a blend.
 - **Each section is a full cone from `angles[0]` to `angles[1]`.** The sections
   overlap; they are not rings unless `angles[0] > 0`. The parser stores
   `cos(angles[1])` and `cos(angles[0])`.
@@ -592,6 +702,31 @@ More confirmed rules (125 mm APFSDS, HEAT-FS, and HE-FS on a Leopard 1 side):
 - **Some fragments are removed after the draw.** A few cones held fewer
   fragments than their count (for example 54 of 90 on an internal plate). The
   rule is not known.
+- **calMult input (October 2026 build, static read checked on 55 live cones):**
+  the `calMult` curve is read at `damageCaliber (mm) / cost`. The cost is the
+  part's cost from section 4.6: `max(charge, armorThrough)`, or the charge for
+  mesh-charged parts. It is not the bore and not the nominal thickness. For a
+  HEAT jet cone, all live cones fit `calMult = 1`, but the input is not known.
+- **Cone gates:** no cone is made when the residual (`arrival − cost`) is 0 or
+  less, when the cost is below `armorFragmentsThicknessThreshold` (3.3 mm), or
+  when the arrival penetration is above `cost × armorFragmentsPierceThreshold`
+  (90).
+- **Modules make cones.** A perforated engine block or fuel tank makes a cone
+  unless its part or class has `createSecondaryShatters = false`. Crew and ammo
+  parts have it set to false. A live T-62 engine cone matched `arrival − charge`.
+- **Hit records with about 50 mm of penetration** at the same distance as the
+  shell's plates are not spall fragments. They are the sabot petals.
+- **Sabot petals are bullets of their own.** The bullet loader reads
+  `segmentCount` (default 1), `startSeparateDist`, `separateRelSpeed`,
+  `separateTime`, `separateDeviation` and `tumblingSpeed` (default 0) from the
+  `sabot` block. Hit records carry an `isSabot` flag. Live, a 125 mm APFSDS shot
+  made `segmentCount` (4) petal records. The petals sat at exact 90° steps
+  around the dart path, all with the same tilt from it, up to about
+  `atan(separateRelSpeed)`. Their arrival penetration was about 51 mm, which is
+  the De Marre value of the sabot block, and the damage factor of their records
+  was 1e-4. Their per-part charge follows the same rules as other bullets. No
+  petals reached a target at 446 m. How the petals spread with distance is not
+  decoded.
 
 #### Warhead body fragments ("real shatters")
 
@@ -669,13 +804,27 @@ is `0x6164290`. Each fragment has a 0x50-byte state:
   fragments (penetration 11 to 8) went through two crew members (7 mm) and
   stopped in the far side armor. Section 1 fragments (penetration 7 to 5)
   stopped at the second crew member, at 7.0 mm.
-- Not yet separated: whether a fragment's penetration falls linearly from
-  `pen[high]` to `pen[low]` over its range, or stays at one end. Both fit all
-  40 recorded hits.
+- **Penetration along the ray (live, 146 part crossings of 4 cones, October
+  2026 build):** the resolved section holds the range at `+0x10`, the
+  penetration at the exit point at `+0x14` (the second number of the preset's
+  `penetration`), the penetration at the range at `+0x18` (the first number),
+  and the two damages at `+0x1c` and `+0x20`. The penetration is linear in the
+  distance `t` from the exit point: `pen(t) = lerp(+0x14, +0x18, t / range)`,
+  clamped outside. It rises along the ray. A part's entry distance gives
+  `rem = pen(t) - used`.
+- **Damage by what is left (live):** the damage of the hit is `+0x1c` when
+  `rem` is at or below `+0x14`, `+0x20` when `rem` is at or above `+0x18`, and
+  linear between. So less penetration left means more damage. The result is
+  multiplied by the part's `<type>DamageMult` for the section's damage type
+  (0.0001 on plates, 1 on modules in the live cases) and, when `rem` is below
+  the part's charge, by the class `restrainDamage`. A part is charged
+  `max(charge, armorThrough)` into `used`; the fragment stops when that cost is
+  above `rem`. A part with no hp left is skipped without a charge.
 - **Fragments near the plate surface are kept.** On a shot 51.5 degrees off
   the normal, fragments 6.4 and 7.8 degrees from the plate surface stayed.
   `minSecondaryShatterAngleFromArmor` (15) probably clamps the cone axis
-  instead; this needs a penetration at more than 75 degrees to test.
+  instead; the 68.4 degree test (21.6 degrees from the surface) did not reach
+  the clamp, so it still needs a penetration at more than 75 degrees.
 
 #### Trace pattern (`traceStrategy`)
 
@@ -688,8 +837,7 @@ caliber, copies its points, and stores `1000 * caliber` (the caliber in mm) as
 the scale. Not yet confirmed: whether the outer ring sits at the full caliber
 or at half the caliber.
 
-Still open: how the `[a, b]` penetration and damage pairs apply to one fragment
-(interpolation over range is likely), the random draw for counts, the 15-degree
+Still open: the random draw for counts, the 15-degree
 `minSecondaryShatterAngleFromArmor` clamp (not yet seen at the angles tested),
 and the RNG.
 
@@ -762,9 +910,48 @@ Live check (October 2026 build, 120 mm HEAT-FS `120mm_dm12`, `armorPower` 480 mm
   points support the value.
 - At a plate, the jet is charged `nominal × quality / cos θ`. This shell has no
   slope preset.
+- On a mesh-charged part (see section 4.6), the jet is charged
+  `cumulative quality × chord`, with no cos and no slope. This rule is
+  confirmed in the code. One live check on a cast T-62 turret wall (chord
+  309 mm) implies about 279 mm of charge, against 290 mm from the rule. The 4 %
+  gap can come from the assumed loss per metre before the wall.
+- A second shell confirms the loss per metre. DTP-125 (`armorPower` 480 mm,
+  `cumulativeDamage.distance` 4.5 m) straight into an 80 mm T-62 side needs
+  about 87 to 96 mm per metre. Thus the loss does not scale with
+  `armorPower / distance`. It is near a constant of 90 mm per metre for both
+  shells.
 
-The class field `cumulativeAirArmor` is a possible static source for the loss
-per metre. It is not confirmed.
+A static read of the October 2026 build explains these numbers:
+
+- The jet is traced only after a perforated or stopped fuse record. A
+  ricochet fires no jet; the shell flies on.
+- The start penetration is `armorPower × (1 + d × u)`, with u a normal draw
+  (sigma 0.3, clipped to ±1). That d is `cumulativePierceDispersion` (0.05) is a
+  guess.
+- The jet is traced for `cumulativeDamage.distance` metres.
+- In the air between crossed parts, the jet loses the shell's
+  `airArmorEquivalent` per metre. The default is the damage-model global
+  `cumulativeAirArmor`, 100 mm per metre.
+- A part that is charged from its nominal thickness (plates, skirts, modules)
+  is a one-point segment for the jet: its exit equals its entry. Thus the air
+  loss runs from one such part's entry to the next part's entry, and the
+  part's own chord also costs air. Live check: a four-part jet chain (6 mm
+  skirt, 50.8 mm side, crew module, 50.8 mm far side) replays exactly with
+  this rule. A mesh-charged part keeps its chord: the air gap after it starts
+  at its exit. A live jet through an engine-compartment part confirms this
+  (the drop after the part equals 100 mm per metre from its exit).
+- Each crossed part, plates and modules, costs `max(charge, armorThrough)`.
+- If the air loss is larger than what is left, the jet ends inside the gap.
+
+The live fit of about 90 mm per metre came from paths that also crossed
+plates. With the entry-to-entry air rule, one IT-1 point that was 94 mm high
+is now 16 mm low. That difference is not explained.
+
+In the live client, the jet is traced by a driver that walks one leg at a
+time (gap stage, part record, part charge, trailing air). A separate walker
+function holds the same rules but did not run in live HEAT shots. Jet hits
+reach the damage code through their own listener, not through the shell-hit
+listener.
 
 ### 3.5 Module, crew, and ammo damage data
 
@@ -823,6 +1010,47 @@ The `ammo` block sets the ammo explosion: `detonateProb`, `detonatePortion`,
 
 Confidence: **Confirmed** for the data. **Not reverse-engineered** for the
 runtime use of the thresholds.
+
+Runtime rules from a static read of the October 2026 build (the rule choice,
+the spall messages, the order within a shot and the gate state are checked
+live; the crew, hull and kill rules are not yet):
+
+- **hp state:** a part's hp is a 16-bit state, 65535 at full. A hit lowers it
+  by `ceil(damage / hp × 65535)`, and it stops at 0. A part with no hp takes no
+  damage.
+- **Spall messages:** the fragments of one section of a spall cone that hit one
+  part add up into one damage message (live: 3 fragments of section 1 and 2 of
+  section 2 on one part gave messages of 40.61 and 12.06, not 52.67). A section
+  with `aggregateDamage false` (the `heat_fs` section 0, for example) gives one
+  message per fragment. Absent, the key means true. The shell, the jet and each
+  warhead fragment give one message each.
+- **Order within a shot (live):** every fragment of every cone flies first; the
+  damage messages of the shot (the shell's own, the spall, the warhead
+  shatters) are applied after the last cone, so fragments meet the parts at
+  the hp they had before the shot.
+- **Rule choice:** the game sorts the rules of a part by damage value, highest
+  first (stable), when the unit loads. The part's `DamageEffects` rule is the
+  first rule in that order whose damage value is below the hit's damage and
+  whose damage type matches, so in practice the highest damage value under the
+  hit wins (live: hits of 53 to 94 took the 50 rule and hits of 28 to 46 the 20
+  rule on a part with 20, 50, 200 and 400). A rule with no type is only the
+  fallback. A hit of damage 0 matches nothing. A warhead fragment message
+  (`shatter`) took the `explosion` rules of parts that have no `shatter`
+  rule.
+- **onHit:** each effect rolls on its own, at
+  `p × clamp((1 − state / 65535) / partDamageEffectThreshold, 0, 1) × onHitChanceMult`.
+  Fire also uses `onHitChanceMultFire` (shell, jet, spall section), and a fuel
+  explosion uses `onHitChanceMultExplFuel`. The state in the gate is the state
+  after this hit (the hp function passes its new state to the hit handler), so
+  a first hit that takes 1 % of the hp or more rolls at the full chance. Each
+  effect gets its own draw, and it triggers when the draw is below its chance.
+- **onKill:** the outcomes are exclusive. Their weights are scaled to sum to 1,
+  and one draw picks one outcome.
+- **Crew:** a tank needs `tank_crew.minCrewMemberAliveCount` crew alive (default
+  2). A member's `crew` value gives its crew count.
+- **Hull:** a dead `body_dm` ends the vehicle.
+- **restrainDamage:** a module's damage is multiplied by the class
+  `restrainDamage` when the arrival penetration is below the part's charge.
 
 ### 3.6 Saved hit files (`ReplayHits`)
 
@@ -1020,12 +1248,62 @@ through the collision mesh.
   `arrival / previous residual − 1` was −3.9 % to +2.3 % (mean −0.6 %, standard
   deviation 1.4 %, 32 pairs). This fits a uniform spread of about ±2.5 %, for
   example from a `pierceDispersion` of 0.05. The first penetration value also
-  gets this spread.
+  gets this spread. In the code, the speed curve carries the penetration as a
+  speed: after a pierce the residual is turned into a speed with the inverse
+  curve, and the next part reads the curve forward again. Thus the carry equals
+  the residual, apart from the stability factor and the spread.
+- **Stability (yaw):** shells with a `stability.penetrationReduction` table
+  multiply each arrival penetration by the table value at their yaw. The
+  example table is 0° → 1, 2° → 0.95, 10° → 0.5, 21° → 0.3. The yaw is zero
+  until the first pierce. A pierce sets a yaw rate from
+  `|acos(B / C) − θ|`, where B is the base and C the charge (B/C clamped to
+  ±1). The rate maps 1° to 10° onto 0 to 1° per metre. The yaw then grows with
+  the path length since that part. A ricochet sets the rate to
+  0.25 × the incidence angle (in radians per metre). The fractions compound,
+  because each residual already holds the earlier ones. A decode of the code
+  replays all 59 logged values exactly. In one live case, the factor fell by
+  about 1.2 % per metre after a 61° pierce, and it was 0.30 at the part after
+  a ricochet.
+
+**Hit records come from a ray pattern, not from one ray** (static read of the
+October 2026 build, checked on live records):
+
+- A kinetic shell traces a centre ray plus rings whose radius scales with the
+  calibre (`0.0005 × calibre in mm` metres; 19 rays at 85 mm and more). That
+  the scale is the calibre in mm is a guess.
+- The crossings are sorted by entry distance. Crossings chain into one group
+  while each step is at most `0.0006 × calibre × clamp(tan θ, 0.1, 10)`.
+- Crossings of the same part merge into one entry. Its weight is the share of
+  the rays that hit that part, capped at 1. Live weights of 4/19 and 1/5 match
+  this rule.
+- A cluster that owns all of the rays, or none of them, leaves the group. Thus
+  a fender over the whole shot gives a record of its own.
+- An entry counts only if its weight is at least `usedArmorOverlap` (0.1) and
+  its charge is above 0. If the strongest entry weighs more than
+  `maxArmorOverlap` (0.8), the record copies it. Otherwise, if an entry weighs
+  at least `minArmorOverlap` (0.3), the record takes the weighted mean (the
+  maximum for `armorThrough` and the caps). Otherwise it copies the heaviest
+  entry.
+- The record's incidence cosine is the largest `|cos θ|` over its rays. On a
+  thin wedge-shaped screen, one ray of the pattern can strike the narrow rim
+  face, so the record takes the rim's lower angle. This explained a Leopard 2A5
+  screen record exactly (86.3 mm).
+- The HEAT jet makes one record per crossed segment, with no grouping.
 
 The static read of this build found the armor class fields at `+0x04`
 (`armorThickness`), `+0x18` (`armorThrough`) and `+0x1c` (`armorQuality`). These
 offsets differ from the table in section 4.3, which comes from an older build.
 Confidence: **Static** for these offsets.
+
+**Disabled parts are not armor-tested** (October 2026 build, checked live).
+Each vehicle instance has a list of disabled damage parts, which the game
+sends as part of its state (`parts` entries of `part` and `disabled`). The
+shell's armor test skips a disabled part: it makes no record and no charge.
+This is runtime state, not static unit data. On one test-drive tank, four
+30 mm outer parts in front of the lower front plate and one ammo rack were
+disabled. On another tank only one ammo rack was disabled. Which game state
+disables a part (for example an unfitted modification or an empty rack) is not
+known.
 
 ### 4.5 Structural and volumetric checks (native)
 
