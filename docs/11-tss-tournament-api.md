@@ -262,6 +262,20 @@ timeInviteGroup}`, `allRewards` and `missions`. [verified]
   in realistic and simulator difficulty. A "2x2" battle is often played by one
   player on each side. One replay can hold several rounds: the same player uid
   then has one track entity for each round. [verified, 2026-10 data]
+- The replay JSON gives these duels an empty `mission_mode`. Some 1x1 duels
+  are also played in arcade difficulty. Simulator shows as the `difficulty`
+  value `hardcore`. [verified, 2026-10 data]
+- TSS team air battles use Air Domination missions, not the duel missions.
+  Their `mission_path` is under `gamedata/missions/cta/tournament/`, not
+  `cta/planes/`, and their `mission_mode` is `Air Domination`. Examples:
+  `korea_#_cap_jets_ad`, `norway_#_cap_jets_ad`, `arcade_canyon_snow_#_cap_jets_ad`,
+  `korea_lake_#_cap_jet_ad`, `air_kamchatka_noautocap_jet_ad`,
+  `avg_red_desert_noautocap_jet_ad`, `avn_japan_noautocap_jet_ad` (`#` is a
+  number). Most are 2v2 and some are 4v4 (45 and 10 in a sample of 60).
+  The same folder also holds ground `Domination` missions with tanks, such as
+  `tss_normandy_dom` and `tss_rheinland_dom`. Thus a filter on `/planes/` in
+  the path finds only the duels. [verified, 2026-10 data, about 3,000 Air
+  Domination battles against 900 duels]
 - Guns are locked for the first 30 s of each round. In the replay tracks this
   shows as no gun hit earlier than 23.0 s after the shooter's first track
   sample of that round (9,227 gun hits checked), because a track starts about
