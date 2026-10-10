@@ -636,31 +636,30 @@ by armor 10 → 1.0, 20 → 0.8, 90 → 0.5; by air 0.1 → 1.0, 0.3 → 0.7, 1.
 In the shell catalog these keys appear on APCR and APDS types only.
 
 - Break test (code-read, record builder, build `edb870f1`, 0x619f680 to
-  0x619f756): the plate thickness is the effective one when the flag is set,
-  else the nominal one. The core breaks when min < thickness < max (both
-  strict) and a speed value is over `breakingCriticalSpeed`. The test runs
-  only for a main part whose part-flag bit 7 is clear. The speed value is
-  read from `[[rbp-0x148] + 0x4]`; it is most likely the flight speed, which
-  the break does not lower (a core broke again at a later plate with only
-  54 mm of pen left).
-- Pen effect (fitted to four live shots, each check inside the ±2.5 % arrival
-  spread): at the break the pen left is multiplied by
-  `breakingScaleByArmor`(plate cost in mm). After that, the total scale since
-  the break follows `breakingScaleByAir`(path in m since the break), so each
-  later arrival takes the step from the previous one. Examples: 212 mm left
-  after a 176 mm cost, 3.6 m of air → 212 × 0.5 × 0.5 = 53 (live 54.05);
-  63 mm left after a gun-barrel break (cost 91 mm), next plate close behind →
-  63 × 0.5 = 31.4 (live 31.55); along one path the scale fell 0.778 → 0.721
-  → 0.706 over three records.
-- Shell-only cone: the builder 0x619c2b0 calls the cone builder 0x6167760
-  with its second argument 0 (every other caller passes 1). That leaves out
-  the `section_armorShatters*` sections. The cone has the full shell count
+  0x619f756; live-checked on two shots): the core breaks when min < thickness
+  < max (both strict) and the flight speed is over `breakingCriticalSpeed`.
+  With the effective flag set, the thickness is the line-of-sight one
+  (nominal / cos θ: 80 mm at cos 0.5731 read 139.58, while the charge was
+  231.5). The speed is the flight speed, which the break does not lower
+  (1422.5 m/s at every plate of one shot). The test runs only for a main part
+  whose part-flag bit 7 is clear. A 0.5 mm add-on plate did not break the
+  core (below 10 mm); 80 mm and 30 mm plates did.
+- Shell-only cone: every live break threw exactly one extra cone with only
+  the `section_shellShatter*` sections (4 of 4). It is its own event: a
+  listener branch (0x1858ccd) sends it to the same cone dispatcher (0x1858050)
+  that sends the plate's normal cone (0x1858eb5). It has the full shell count
   (Shot Mk.3: 5 / 8 / 13) and its pen and damage scales sit at the curve
   minimum. It starts 0.06 m (0.059 to 0.061 on six breaks) plus the plate's
-  line-of-sight thickness past the plate's own cone. Not every break throws
-  it: a gun-barrel break lowered the pen but threw no shell-only cone. The
-  cone path also needs `[arg3 + 0x1c] == -1.0` and `[arg3 + 0x38] == 0` in
-  0x619c2b0; what those fields hold is not decoded.
+  line-of-sight thickness past the plate's own cone. A gun barrel broke the
+  core (the pen dropped) but threw no shell-only cone.
+- Pen effect (fitted to six live APDS shots, each step inside the ±2.5 %
+  arrival spread): at the break the pen left is multiplied by
+  `breakingScaleByArmor`(line-of-sight mm). After that, every air gap the
+  broken core crosses multiplies its pen by `breakingScaleByAir`(gap in m,
+  from the previous part's exit to the next part's entry). Examples: 142 mm
+  left after a 139.6 mm line-of-sight plate, then a 1.0 m gap → 142 × 0.5 ×
+  0.5 = 35.5 (live 35.6); the next 0.12 m gap → × 0.93 (live 0.930); a 3.6 m
+  gap → × 0.5; a short gap after a gun-barrel break → × 1.0.
 
 Example `ap`: count curve `[20, 100, 0.5, 1.0]`. The 4-value curves look like a
 clamped linear map `[x0, x1, y0, y1]`, with residual penetration in mm as `x`.
