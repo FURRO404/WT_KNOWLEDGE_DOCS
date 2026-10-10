@@ -415,6 +415,15 @@ carries no plate id. Do not assume that a node name names the plate under the
 hit. Recover the plate from the layer geometry (thickness and position) or from
 a live capture.
 
+**Axis handedness.** Collision node vertices (after the node transform) are in
+the game's native frame. A visual or X-ray mesh exported to OBJ through the DAE
+`getOBJ()` path has z negated. So a raw collision export is the mirror image of
+the visual model on z: on the M1A1 HC, `track_l_dm` sits at z = +1.32 in the
+collision data, while the visual `wheel_l_*` sits at z = −1.36. To overlay the
+two, negate the collision z and reverse its triangle winding. The winding
+reversal keeps the native facing: tank collision meshes are wound inward
+(negative signed volume).
+
 ### 3.4 How the X-ray OBJ is assembled
 
 Assemble per unit, in this order. A later step skips a part base an earlier step

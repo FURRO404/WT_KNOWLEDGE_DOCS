@@ -599,10 +599,68 @@ Scale curves in a preset:
 - `residualArmorPenetrationToShatterPenetrationMult`
 - `residualArmorPenetrationToShatterDamageMult`
 - `caliberToArmorToShatterCountMult`
-- mass-based presets (`ap_large_caliber`, `apds`, `apcr`): `armorMassToShatterCount`,
+- mass-based presets (`ap_large_caliber`, `ap_solid_medium_caliber`, `apds`,
+  `apds_fs_25_76mm`, `apcr`): `armorMassToShatterCount`,
   `shellMassToShatterCount`, `residualPenetrationTo{Armor,Shell}Shatter{Penetration,Damage}Mult`.
   These presets split the fragments into `section_shellShatters*` and
   `section_armorShatters*` by `countPortion`.
+
+**Mass-based preset counts (live-verified, 17 cones, two shells):**
+
+- Shell total = `shellMassToShatterCount`(shell mass in kg). The shell mass
+  is the bullet's `damageMass` when it has one (an APDS core), else `mass`.
+  Example: a 9.07 kg solid AP shot gives 28.6 → 3 / 9 / 17 fragments with
+  portions 0.1 / 0.3 / 0.6; an APDS shot with `damageMass` 2.1 kg gives
+  26 → 5 / 8 / 13 with portions 0.2 / 0.3 / 0.5. The shell total is the same
+  on every cone of a shot.
+- Armor total = `armorMassToShatterCount`(plate mass in kg), with plate
+  mass = k × (damage caliber in m)² × (plate cost in mm). k is between 24.01
+  and 24.21 (π × 7.7 = 24.19 fits). The caliber is `damageCaliber` when the
+  bullet has one. The cost is the angled charge, not the nominal thickness: a
+  40 mm plate at 58° reaches the curve cap, the same plate at 4° does not.
+- Each section count = round-half-up(total × `countPortion`), with the
+  section's `shellShatter` flag choosing the shell or the armor total.
+- Penetration and damage of a section scale on the shell or the armor
+  residual curves, with x = arrival penetration − plate cost (mm). Below the
+  first x the scale is the curve minimum (for example 0.2 for pen and 0.1 for
+  damage in `ap_large_caliber`).
+- An APDS shot can also make a second cone with only the shell sections. That
+  cone is the core breakup below.
+
+**Core breakup (APDS, APCR).** Sub-caliber bullets can carry
+`breakingCriticalSpeed`, `breakingArmorThickness = [min, max]`,
+`breakingArmorThicknessEffective`, `breakingDistance` and, in their `damage`
+block, the point tables `breakingScaleByArmor` and `breakingScaleByAir`.
+Example (83 mm Shot Mk.3): 1000 m/s, [10, 300] mm, effective true, 0.05 m;
+by armor 10 → 1.0, 20 → 0.8, 90 → 0.5; by air 0.1 → 1.0, 0.3 → 0.7, 1.0 → 0.5.
+In the shell catalog these keys appear on APCR and APDS types only.
+
+- Break test (code-read, record builder, build `edb870f1`, 0x619f680 to
+  0x619f756): the plate thickness is the effective one when the flag is set,
+  else the nominal one. The core breaks when min < thickness < max (both
+  strict) and a speed value is over `breakingCriticalSpeed`. The test runs
+  only for a main part whose part-flag bit 7 is clear. The speed value is
+  read from `[[rbp-0x148] + 0x4]`; it is most likely the flight speed, which
+  the break does not lower (a core broke again at a later plate with only
+  54 mm of pen left).
+- Pen effect (fitted to four live shots, each check inside the ±2.5 % arrival
+  spread): at the break the pen left is multiplied by
+  `breakingScaleByArmor`(plate cost in mm). After that, the total scale since
+  the break follows `breakingScaleByAir`(path in m since the break), so each
+  later arrival takes the step from the previous one. Examples: 212 mm left
+  after a 176 mm cost, 3.6 m of air → 212 × 0.5 × 0.5 = 53 (live 54.05);
+  63 mm left after a gun-barrel break (cost 91 mm), next plate close behind →
+  63 × 0.5 = 31.4 (live 31.55); along one path the scale fell 0.778 → 0.721
+  → 0.706 over three records.
+- Shell-only cone: the builder 0x619c2b0 calls the cone builder 0x6167760
+  with its second argument 0 (every other caller passes 1). That leaves out
+  the `section_armorShatters*` sections. The cone has the full shell count
+  (Shot Mk.3: 5 / 8 / 13) and its pen and damage scales sit at the curve
+  minimum. It starts 0.06 m (0.059 to 0.061 on six breaks) plus the plate's
+  line-of-sight thickness past the plate's own cone. Not every break throws
+  it: a gun-barrel break lowered the pen but threw no shell-only cone. The
+  cone path also needs `[arg3 + 0x1c] == -1.0` and `[arg3 + 0x38] == 0` in
+  0x619c2b0; what those fields hold is not decoded.
 
 Example `ap`: count curve `[20, 100, 0.5, 1.0]`. The 4-value curves look like a
 clamped linear map `[x0, x1, y0, y1]`, with residual penetration in mm as `x`.
