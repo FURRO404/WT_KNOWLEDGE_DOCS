@@ -1052,6 +1052,27 @@ live; the crew, hull and kill rules are not yet):
 - **restrainDamage:** a module's damage is multiplied by the class
   `restrainDamage` when the arrival penetration is below the part's charge.
 
+#### Ammo stowage explosions (fatal and blowout)
+
+Each `shells` block of a unit's `ammoStowages` carries its own `fatalFire`
+and `fatalExplosion` flags (a turret bustle with blowout panels has
+`fatalExplosion: false`). The stowage level holds no flags of its own on such
+units, so a reader must take them from each `shells` block.
+
+The ammo stowage damage logic is game script (daScript) in the game files, not
+native code. A fatal explosion ends the vehicle. A non-fatal explosion sends a
+delayed explosion-effects event with a strength from the explosive mass x the
+ammo count x a random detonated portion (`ammoStowageDetonatePortion`, 0.1 to
+0.3 in the damage model), and the ammo of that cluster is destroyed. The
+damage model table `explosiveTypeToShattersParamsForAmmoStowage` sizes the
+shatter burst of that event (penetration 7 to 50 mm). The handler of the event
+is native code and is not decoded. The block's `fireParamsPreset`
+(`config/fireparams.blk`) only drives the fire that follows.
+
+In the game, a blowout kills the vehicle when the part that separates the
+ammo from the crew compartment is destroyed. No unit key names that part; the
+burst must reach the crew through the geometry.
+
 ### 3.6 Saved hit files (`ReplayHits`)
 
 The client saves a hit as a text BLK in the `ReplayHits` folder of the game
@@ -1301,9 +1322,16 @@ sends as part of its state (`parts` entries of `part` and `disabled`). The
 shell's armor test skips a disabled part: it makes no record and no charge.
 This is runtime state, not static unit data. On one test-drive tank, four
 30 mm outer parts in front of the lower front plate and one ammo rack were
-disabled. On another tank only one ammo rack was disabled. Which game state
-disables a part (for example an unfitted modification or an empty rack) is not
-known.
+disabled. On another tank only one ammo rack was disabled.
+
+The four tank parts are the parts of an unfitted dozer blade. The unit file
+lists them under the modification: `modifications.<mod>.disableModEffects.
+hideNodes` names the nodes that are hidden while the modification is not
+fitted, and `modifications.<mod>.effects.hideNodes` names the nodes that are
+hidden while it is fitted. A hidden node's `<node>_dm` part is not
+armor-tested. Many modifications use these keys, for example dozer blades,
+camouflage nets, track extensions and add-on armor kits. That the disabled
+ammo rack was an empty rack is a guess.
 
 ### 4.5 Structural and volumetric checks (native)
 
