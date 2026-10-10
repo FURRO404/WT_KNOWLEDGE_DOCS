@@ -810,6 +810,18 @@ Checks: 125 mm 3BK18M (19 kg, 1.754 kg `ocfol`, brisance 1.47) gives
 gives `m = 4.763`, class `bombs_he_sap`, `N = 2099`, `R = 33.81`, `P = 5.881`,
 `D = 9.514`. All values match the live capture.
 
+Live checks (build `edb870f1`, T-80U-E1 rounds): 125 mm 3BK18M gives
+N = 1200 (24 / 60 / 816 / 240 / 60), 3OF26 gives N = 2099
+(42 / 105 / 1427 / 420 / 105), and the 9M119M1 ATGM (17.2 kg, 3.6 kg `ocfol`,
+fill 0.308 → class `bombs_he_frag`) gives N = 120, R = 36.46, P = 7.573,
+D = 6.573. The count uses `mass`, not `massEnd` (107 would follow from
+`massEnd`). Some ATGM warheads list 11 segments over 0° to 359°. The game
+keeps all of them and takes the cosine of each angle, so a band past 180° acts
+as an inverted copy of its mirror band (the side bands are thrown twice). The
+warhead body fragments fly in every direction from the burst point, outside
+the hull included; the set is built with the cone builder's armor-section flag
+off.
+
 #### APHE burst ("synthetic shatters")
 
 Confirmed live with 75 mm PzGr 39/42 (6.8 kg, 0.017 kg `h10`, brisance 1.4)
@@ -947,6 +959,68 @@ penetration, and damage.
 Confidence: **Confirmed** for the data. **Partial** for the runtime use. The
 code that picks the fragment class and that converts the mass to TNT
 equivalent is not traced.
+
+### 3.3b Tandem ATGM precharge (live-checked)
+
+A rocket keeps its kinetic damage in a top-level `kineticDamage` block, not in
+`damage.kinetic`. A tandem warhead sets `kineticDamage.damageType =
+tandemPrecharge` and gives the rocket body an `armorpower` of 50 mm (a single
+charge has about 5 mm and no damage type). Example, 127 mm ZT3A2 against the
+single-charge ZT3A1: kinetic 50 vs 5 mm, `fuseDelayDist` 0.4 vs 0.05 m,
+`explodeTreshold` 0.01 vs 0.1, jet `armorPower` 1000 vs 650 mm.
+
+- The rocket body flies first as an ordinary kinetic record. Live (9M119M1):
+  every hit logged a first record with 49.86 to 50.40 mm of pen (50 mm with
+  the arrival spread). Its charge is nominal × armor quality / cos with the
+  tandem damage type (live 41.03, 34.02, 71.08 on CHA plates of quality 0.94;
+  an ERA block of quality 1.1 at cos 0.15 charged 36.2).
+- Armor classes carry `tandemPrechargeArmorQuality` (most explosive ERA 0.33,
+  against 2.5 to 7.5 for `cumulativeArmorQuality`; `ERA_Duplet` 2.0). A class
+  without the key charged the precharge with its plain armor quality.
+- When the body pierces a plate, the warhead (jet and body fragments) bursts
+  `fuseDelayDist` + 0.01 m past the end of that record: 0.4104 and 0.4096 m
+  on two cupola shots at cos 0.80 and 0.97. A tandem missile that pierces a
+  thin cupola therefore bursts 0.41 m inside the turret.
+- When the body stops on a plate, the warhead bursts at the plate face minus
+  the explosive offset (0.2 m), and the jet's first cone sits at that plate's
+  entry, 0.2000 m behind the burst.
+
+### 3.4b Overpressure (live-checked)
+
+Every round whose projectile type has a `pressureDamage` block (HE, HEAT and
+ATGM types; damage type `pressure`) runs an overpressure stage after its
+splash and body fragments (`pressure_damage_processing`, build `edb870f1`
+0x18475f0). AP, APHE and sabot rounds have no such block.
+
+- Curves: `explosiveTypeToPressureParams` (closed) and
+  `explosiveTypeToPressureOpenParams` (open) give inner radius, outer radius,
+  penetration and damage against TNT mass = explosive mass ×
+  `strengthEquivalent`. Live: 125 mm 3OF26 closed 4.14 / 6.82 m, 5 mm, 40;
+  open 3.76 / 7.53 m, 5 mm, 40. 9M119M1 closed 4.34 / 7.16 m.
+- Compartments: one per `MetaParts` entry whose `effect` block sets
+  `pressure: true` (closed) or `pressureOpen: true` (open), with the
+  metapart's part list (on most tanks `closed_fightning_compartment`). The
+  effect's conditions are not read.
+- An open compartment always applies. A closed one applies only when the
+  burst's splash or fragments damaged at least one of its parts (live: the
+  burst's hit set held crew parts on every kill; bursts on skirts that hit no
+  compartment part killed nobody).
+- Each part of an applied compartment takes the full damage up to the inner
+  radius, then linearly less to 0 at the outer radius. The damage is cut when
+  the pressure penetration is low against the part's thickness × armor
+  quality (below `splashPenetrationToArmorThreshold`, default 0.33), then
+  scaled by the part's `pressureDamageMult`. A part without
+  `pressureDamageMult` takes nothing (live: 36 of 40 and 73 of 77 compartment
+  parts inside the inner radius took no message); the crew group sets 1.0.
+- Crew parts have 40 hp and the damage curve floors at 40, so every crew
+  member inside the inner radius dies at once. No crew-knockout call fires:
+  it is plain hp loss, and the hit camera shows the crew dead before any
+  penetration. Live: HE on an M60A1 RISE (P) cupola and on a Centurion Mk 10
+  cupola, and a tandem ATGM inside an M60A1 turret, each killed all four crew
+  at 0.41 to 1.78 m.
+- The hp-write damage message holds the part index at +0xee, the damage type
+  at +0xf0 and the damage in hp at +0xf4. A part's 16-bit hp state goes to 0
+  when damage ≥ hp, else it drops by ceil(damage / hp × 65535).
 
 ### 3.4 HEAT standoff
 
