@@ -549,6 +549,21 @@ the role, and the plain tags `air`, `aircraft`, `tank`, `helicopter`,
   `type_heavy_tank`, `type_tank_destroyer`, `type_spaa`,
   `type_missile_tank`, `type_football_tank`.
 
+## 5b. Display names (`lang/units.csv`)
+
+The display name of a unit is in `lang/units.csv` in `lang.vromfs.bin`.
+The key is `<id>_shop` (the research tree name). The tanks that were
+examined also have `<id>_0` and `<id>_1` with the same name, and `<id>_2`
+with the class name, for example `MBT`.
+
+- The game's own name can differ between two copies of the same vehicle
+  in different nations. The Swedish `sw_t_80u` is `T 80 U` (spaces), but
+  the Soviet `ussr_t_80u` is `T-80U`. Show the name from the table. Do not
+  "correct" it. [verified, lang.vromfs.bin, Oct 2026]
+- Names can carry decoration glyphs: country markers (`▄`, `▀`), event and
+  premium markers (`◊`), and Private Use Area characters. A renderer whose
+  font cannot draw them must strip them.
+
 ## 6. Aircraft flight model data
 
 ### 6.1 Where it is
