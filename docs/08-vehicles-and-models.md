@@ -340,6 +340,12 @@ Each tank `DamageParts` child declares `armorClass` and `armorThickness` direct.
 The DM data feeds armor thickness into penetration. See
 [06-ballistics-and-armor.md](06-ballistics-and-armor.md).
 
+Commander cupola: no tank DM has a part named `cupola`. The cupola armor is the
+part `turret_commander_dm` (an armor plate, class CHA or RHA, usually 20 to
+100 mm, filed under the `turret`, `mask` or `hull` group). It is in about 565
+ground collision models. Do not mix it up with `commander_dm` (the crew member)
+or `commander_panoramic_sight_dm` (an optics module).
+
 ### 3.2 Aircraft armor data
 
 Aircraft differ from tanks in five ways:

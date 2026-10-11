@@ -1121,6 +1121,14 @@ An `hp` below the root `hp` (10000) does not mark a module. A survey of the
   `cannon_breech` keeps the default of 1.
 - The `tracks` group sets `allowRicochet: true` (its class `tank_traks` has
   `false`) and `armorEffectiveThicknessMax 20`. These are plate-model fields.
+  The group value does not make a track ricochet. In a live Protection
+  Analysis replay (build md5 `edb870f1`), an APFSDS dart met a track at
+  87.6° (the preset rows give a chance near 1). The game built the track
+  record, ran the normal pierce path, and did not bounce. So the class value
+  `false` wins over the group value `true`. Confidence: **Confirmed** for one
+  live shot. In the live DM part table of that unit, every armor plate had
+  flag bit `0x2` set and the two track parts had flags `0x10` without it. That
+  bit may be the resolved ricochet permission; this is an inference.
 
 Confidence: **Confirmed** for the data. How the game itself decides which
 parts are charged `armorThrough` is **Not reverse-engineered**.
@@ -1200,6 +1208,27 @@ shatter burst of that event (penetration 7 to 50 mm). The handler of the event
 is native code and is not decoded. The block's `fireParamsPreset`
 (`config/fireparams.blk`) only drives the fire that follows.
 
+What an `expl` or `full_expl` effect on an ammo part does (game script
+`gamecommon/unit/ammo_stowage_dm.das`, handlers of `CmdApplyPartDamageEffect`
+and `EventUnitDamage`):
+
+1. An empty slot does nothing.
+2. If the round in the slot has explosive mass, and the cluster is not a
+   `charges` cluster, the round explodes. A cluster with `fatalExplosion` ends
+   the vehicle. Otherwise the explosion is the delayed, vented one above.
+3. If the round has no explosive but has powder, or the cluster is a `charges`
+   cluster (two-piece ammo), the effect becomes an ammo fire. A cluster with
+   `fatalFire` sends `EventAmmoStowageDoFatalFire`.
+
+The `ammo` block's `detonateProb` is not a roll on the hit. It is used in one
+place only: while the ammo of a dead vehicle burns, each frame has a chance of
+`detonateProb × dt` to turn the fire into an explosion (cook-off).
+Confidence: **Confirmed** from the script.
+
+The script sets each slot's capacity but not the round type. The type comes
+from the loadout. With no saved loadout the slots most likely hold the gun's
+top-level bullet (the stock round); this is an inference, not checked.
+
 In the game, a blowout kills the vehicle when the part that separates the
 ammo from the crew compartment is destroyed. No unit key names that part; the
 burst must reach the crew through the geometry.
@@ -1222,7 +1251,7 @@ offenderObject:t, spawnerObject:t
 weapon:t                             # weapon BLK path
 ammo:t, ammoType:t                   # shell name and projectile type
 bulletSetNo:i, ammoNo:i, isBelt:b, supportGun:b
-lPos:p3, lDir:p3                     # hit point and direction, unit-local
+lPos:p3, lDir:p3                     # start point and direction, unit-local
 pos:p3, dir:p3                       # world values
 speed:r or startVel:p2               # impact speed, or muzzle speed and angle
 startAltitude:r
@@ -1243,6 +1272,25 @@ blocks. A file saved in Protection Analysis has `version 0` and no part state.
 
 The `state` value is a multiple of 4096 in the files seen (0 to 61440). It
 looks like a part health value in 1/16 steps. This is an inference.
+
+Protection Analysis loads a hit file with these rules
+(`scripts/dmviewer/protectionanalysis.nut`, `protectionanalysisoptionshandler.nut`):
+
+- The file is valid when it has `ammo` and `distance`, and both `object` and
+  `offenderObject` name known units.
+- `object` is the target. `offenderObject` is the shooter: the options panel
+  builds its shell list from the shooter's own ammo and selects `ammo` in it.
+  A file whose `offenderObject` does not carry `ammo` loads the target, but
+  "Replay shot" does nothing. A file the game writes after a cross-vehicle shot
+  names the shooter unit and the shooter's own gun BLK in `weapon`.
+- `lPos` is not the hit point. It is a point on the shot line outside the
+  target, before the first part (in the files seen it lies just outside the
+  collision bounds; it is not exactly the bounding box plus a fixed margin).
+- `lPos` / `lDir` are in the target's native frame. A model exported to OBJ
+  through the DAE `getOBJ()` path has z negated relative to it. A start point
+  anywhere on the line outside the target replays the same line.
+
+Confidence: **Confirmed** (script read, and live replays of hand-made files).
 
 The `seed` field means the post-penetration result is a seeded random draw.
 A file is a test case: the same shot, seed, and part state must give the same
