@@ -753,6 +753,49 @@ events. [verified, 2026-10, 51,157 messages]
   (3,616), `EventRepairSystemNetSyncNetMsg` (6,314), `0x2a247962`
   (unnamed, 4,649), `EventOnUnitLaunchShellNetMsg` (3,661).
 
+**Names of ECS message classes.** The release game does not keep the class
+names of network messages: the engine sets the name to null in release
+builds. Only the hash is in the type 8 packet. A name can be found when the
+game keeps the name of the event, because the class name is the event name
+plus `NetMsg`. Engine classes keep the name of the engine source.
+[verified, 2026-10]
+
+- Engine names: `0x6c6b5b0a` `RiexSyncUpdateMsg` (server to client, one time
+  at battle start, the body is a bit stream), and the client-to-server
+  classes `0x7be55262` `ClientControlledEntityDasEventMsg`, `0xae9ad41f`
+  `ClientDasEventMsg`, `0xc86d153f` `DasEventHandshakeMsg` and `0xfa420ecb`
+  `ClientSQEventMsg`.
+- Probable names, from a hash search only: `0x2a247962`
+  `RiDestrDataUpdateMsg` (to the global entity, all through ground battles,
+  a bit stream with lists of object ids), `0x773e4201` `RiDataSnapshotMsg`
+  (one per battle, at the start), `0x4a040d29` `SandWormSnapshotMsg` and
+  `0xfbd8b78c` `BuravSnapshotMsg` (event modes, not seen). [probable,
+  2026-10]
+- `0x5ef9d823` has no name. It comes at the same millisecond as each
+  `EventShellVisualExplosionNetMsg` (3,616 of 3,616), with the same packed
+  position.
+
+**DasEventMsg body.** [verified, 2026-10, 9,311 of 9,311 messages]
+
+- The body is one bit stream: a varint (7 bits in each byte, low group
+  first) with the bit count, then the bytes.
+- The bit stream starts with a `uint32` event type. The type is the 32-bit
+  FNV-1a hash (not FNV-1) of the daScript event name.
+- The event fields follow in the order of the declaration, with no
+  alignment: `bool` is 1 bit, and a list is a varint count, then the items.
+  The declarations are the `[event(..., routing=ROUTING_SERVER_TO_CLIENT)]`
+  structs in `game.vromfs.bin`, `gamecommon/**/*.das`.
+- Types seen: `0x68e53f5d` `EventAmmoStowageNetSync` (bit stream),
+  `0xc3125684` `EventEngineOverheatDamage` (`bool start`), `0xb99f9703`
+  `EventProximityVisualDamageNetSync` (`float3` position, `uint` projectile
+  props id, bit stream), `0x589c510a` `EventFireSystemNetSync` (`bool`, int
+  list), `0xcc8b46ca` `EventExtinguishSystemNetSync` (3 `float`, `int`),
+  `0x93a6ec2c` `EventShipWaterNetSync` (`uint8`, float list), `0xba3383c0`
+  `EventShipBreachesNetSync` (`uint8`, point4 list, int list, float list),
+  `0x41d8dea8` `EventAmmoStowageNetSyncReplanishmentReset` (`int`, `float`).
+- The projectile props id is a small number that changes in each battle.
+  Some ids have bit 27 set.
+
 **Part killed and part restored.** [verified for the ids, 2026-10]
 
 - `EventDamagePartKilledNetMsg` goes to the unit entity. The body is a
@@ -984,9 +1027,15 @@ kind, field 2 world position, field 3 `float` scale (1.0 in 97%), field 4
 unit vector of the projectile flight (0 in 3%). 8,428 distinct events (each
 event is sent two times). Kinds: 550 (5,365), 395 (1,770), 8 (879), 9 (390),
 813 (27), 455 (1). Kind 550 occurs in pairs every 0.08 s at a height of up to
-2 km, along a line upwards: flak bursts of an anti-aircraft gun. Kinds 395
-and 8 hit the ground near one point with a downward direction. The meaning of
-each kind number is not known. [verified layout, 2026-10]
+2 km, along a line upwards: flak bursts of an anti-aircraft gun. Kinds 8
+and 395 are the artillery strike of ground battles: 4 kind 8 events
+(ranging shots, about 5 s apart), then about 11 kind 395 events (about
+0.3 s apart) near the same point, with a downward direction. This agrees
+with the artillery data in `units/structures/*.blk`
+(`artilleryNumBulletsForAdjustment` 4, `artilleryTimeBetweenAdjustmentsShots`
+5, `artilleryTimeBetweenShots` 0.3); 48 full strikes. The kind numbers are
+the same in all battles, so they are not projectile props ids. Kinds 9, 813
+and 455 are not known. [verified layout and pattern, 2026-10]
 
 **0xF0DF `CustomWeatherParams`.** Object kind 11 (global 0). About 20 per
 battle: many in the first 20 s, then two every 90 s. [verified, 2026-10]
