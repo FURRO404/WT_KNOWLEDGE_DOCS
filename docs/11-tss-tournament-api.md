@@ -331,6 +331,17 @@ that shows only after login. Its API paths (from the page code):
 - The CDN sends a 302 to the file on a second host,
   `https://wt-replays-cdnnow.cdn.gaijin.net/{hex session id}/NNNN.wrpl`.
   [verified, 2026-10]
+- The CDN is not only for tournaments. It also keeps the server replays of
+  normal random battles (ground and air). A client replay holds the session
+  ID at header offset 732, so the server replay of the same battle can be
+  downloaded with it. 48 of 76 random battles from the previous 3 weeks were
+  still there. [verified, 2026-10]
+- The CDN host `wt-replays-cdnnow.cdn.gaijin.net` sends
+  `Access-Control-Allow-Origin` with the origin of the request (also for
+  `github.io` and `localhost`, and also on a 404). A web page can thus fetch
+  the parts directly. The `wt-game-replays.warthunder.com` address sends only
+  a 302 with no CORS header, so a browser cannot follow it.
+  [verified, 2026-10]
 - To find out if a part exists, send a GET, not a HEAD. A HEAD gives 404 also
   for a part that exists. A GET gives 302, and a GET with a `Range` header
   gives 206. The last part of a replay is the one before the first 404.

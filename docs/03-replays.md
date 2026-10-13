@@ -672,6 +672,14 @@ arcade tanks and air duels, 294 MB of packet stream. [verified, 2026-10]
   The engine speed goes to 0 at the kill (70 of 70).
 - The spawn byte holds two 4-bit counters. Both increase at each new spawn of
   the same player (51 of 51).
+- Most states repeat: on an 18-minute ground battle, only 399,499 of
+  1,628,054 vehicle states (24.5%) differed from the previous state of the
+  same vehicle. A tool that stores only the changes keeps the same value at
+  each time. [verified, 2026-10]
+- For one battle, the server replay and a client replay agree on units,
+  kills and hits for the time that the client replay covers. A client replay
+  ends early when its author leaves the battle. [verified, 2026-10, 48
+  battles]
 - Ships use the same record. Their state adds a ship block after the engine
   byte. After the ship block a ship sends 2 bits (always 0), then the same
   tail as a tank: the turret-angles bit, the "player in vehicle" bit, one
