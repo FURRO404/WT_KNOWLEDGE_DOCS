@@ -301,8 +301,16 @@ those battles never sent the afterburner value. [verified, 2026-10]
 
 - The first bit of an aircraft's record is "on the ground". On all 8 jets it
   was 1 from the parked start until lift-off at 76–136 m/s, then 0.
-- After it come a `uint32` and one bit. Both were 0 in all 131,693 syncs of
-  31 replays (27 server, 4 client). [verified, 2026-10]
+- After it come a 32-bit value and one bit. In server replays both are always
+  0. In 566 syncs of four client replays (the author's Mirage IIIC, Mirage F1C
+  and JAS 39E), the 32-bit value was `0x3E555556`, which is the `float`
+  0.2083 (5/24), for periods of 10 to 26 s in flight. The bit was 1 only in
+  these periods. The value is thus probably a `float`. The meaning of both is
+  not known. [verified for the values, 2026-10]
+- Before each aircraft record come two bits. They are 0 in server replays. In
+  client replays they change for all aircraft except the author's own. When
+  both are 1, no record follows. Their meaning is not known.
+  [verified, 2026-10]
 - Then a flag bit for the gun triggers. It is 1 only while the pilot fires.
   It was 1 in 1,436 of the 131,693 syncs. In four replays with gun round
   counters, 482 of 697 flagged syncs had a counter drop in the same sync and
@@ -315,11 +323,19 @@ those battles never sent the afterburner value. [verified, 2026-10]
     came with a drop of all five counters 47 times. Bit 1 alone came with
     a drop of only the 12.7 mm counters 3 times. The single gun of a jet
     uses bit 2. The Bf 109 E and F sent both bits together.
-  - Bit 3: always 0.
-  - A 4-bit count, then one bit for each. The bits were always 0. On props the
-    count equals the number of guns (P-63 5, Bf 109 E 4, Spitfire LF IXe 4,
-    Bf 109 F-4 3). On jets it does not (2 on a JAS 39C, 4 on a Mirage
-    2000-5F).
+  - Bit 3: the trigger of the additional guns (flight-model trigger
+    `additional gun`: gun pods and guns below the wings). It was 1 in 218
+    syncs, only on aircraft with such guns (Me 262 A-1/U1, Ar 234 B-2,
+    F-4C, A-7E, A-10A and others). [verified, 2026-10]
+  - A 4-bit count, then one bit for each entry. The count is the number of
+    gun-type entries in the weapon list of the aircraft: the guns, the gun
+    pods, the turret guns, the dummy turrets of the optics and the HMD
+    (`dummy_weapon.blk`, trigger `gunner0`) and the targeting pods (for
+    example Litening). Drop tanks, boosters, bombs and missiles are not
+    counted. It agreed for 338 of 338 aircraft. A JAS 39C sends 2 (the
+    cannon and one dummy turret), and 3 with a Litening pod. The bit for each
+    entry was 1 in only 19 syncs. Its meaning is not known.
+    [verified, 2026-10]
 - After the packed velocity, the record aligns to a byte and holds 7 bytes of
   control state. Byte 6 was always 0. Bytes 3 and 4 were 0 on fighters. In
   client replays, byte 3 was 15 on aircraft with bomb bays (B-29, Tu-95, B-52,
@@ -429,8 +445,12 @@ those battles never sent the afterburner value. [verified, 2026-10]
   MPI message types: 0xF0CC (camera), 0xD041 (three fixed payloads,
   every 0.5 s) and 0xD047 (`FmwRpm`). It received no ECS entity message and
   no ECS replication. [verified, 2026-10]
-- The countermeasure states and the two `uint16` values behind their flag
-  bit were never present.
+- The countermeasure states were empty in server replays. In 7 recent client
+  replays (helicopters and jets) the count was not 0 in 5,785 syncs. The two
+  `uint16` values behind their flag bit were present in 8,561 syncs, mostly
+  (0, 0). Their meaning is not known. [verified, 2026-10]
+- Client replays have 100 to 200 more bits after the three `float` values at
+  the end of the sync. The parser does not read them. [verified, 2026-10]
 - After the last aircraft record (uid 0x7FF), the sync ends with three
   `float` values. In a client replay they are the world position of the
   author's own aircraft: equal to its sync position (0.0 m) in 2,195 of 2,199,
@@ -483,9 +503,11 @@ of an aircraft ends with a flag bit and an optional seeker block, probably
 for the selected missile. Data from a 2.59 4v4 jet battle (5,368 blocks) and a client
 air duel (14,291 blocks). [verified, 2026-10]
 
-- The block has one of three lengths: 518, 599 or 895 bits. The length
-  follows the state of the selected missile, not the missile type. The same
-  PL-12 gave all three lengths.
+- In one 4v4 battle the block had one of three lengths: 518, 599 or 895
+  bits. The length follows the state of the selected missile: the same PL-12
+  gave all three lengths. Over 173 replays there are more lengths (for
+  example 379, 443, 572, 668 and 807 bits), probably one set for each missile
+  kind. [verified, 2026-10]
 - For the replay author in the J-10A client duel, the block had 599 bits
   between launches and 895 bits in each period that ended with a PL-12
   launch. It had 518 bits at spawn and in the one period that ended with an
@@ -506,14 +528,30 @@ air duel (14,291 blocks). [verified, 2026-10]
   the time, also before its PL-12 launches. Its block is not reliable.
 - The 518-bit block carries the IR lock before launch:
   - Bits 50–81 are a `float` battle time in seconds: the time of the last
-    seeker lock. It is −3.4·10^38 (minus the `float` maximum) before the
-    first lock. Before a Magic 2 launch at 187.9 s it read 186.8. Before an
-    AIM-9M launch at 190.5 s it read 187.2 and then 188.2.
+    change out of state 0 or 2. A change between 3 and 4 keeps the time (87
+    of 87), and so do 4 to 0, 3 to 0 and 0 to 4. It is −3.4·10^38 (minus the
+    `float` maximum) before the first change. [verified, 2026-10, 1,000
+    changes]
   - Bits 43–45 are a seeker state. 0 is no lock, and it also follows each
-    launch. 2 is the moment of a new lock: a median of 0.6 s after the lock
-    time. 3 and 4 follow while the lock holds (median 5.7 s and 2.9 s after
-    the lock time). The difference between 3 and 4 is not known.
-  - No line of sight to the target was found in this block.
+    launch. 2 is the seeker on at the boresight, at the start of a lock.
+    4: the seeker axis points at an aircraft (median 0.32°, 491 of 694 blocks
+    within 1°). [verified, 2026-10] 3: the seeker has a target, but its axis
+    is not on an aircraft (median 22° from the closest one). On seekers that
+    the pilot cannot uncage it stays at the boresight. It is not a lock on a
+    flare. [probable, 2026-10] A state 6 also occurs, with a different
+    layout.
+  - Three `float` values at bits 149, 181 and 213 are the seeker axis, a unit
+    vector in world axes. In states 0 and 2 it is the forward axis of the
+    aircraft, about 2° down. [verified, 2026-10]
+  - Two `float` values at bits 85 and 117 are the gimbal angles of the seeker
+    in radians, relative to the aircraft: azimuth (positive to the left) and
+    elevation (positive up). They are 0 while the seeker is caged, and they
+    stop at the missile's `angleMax` (0.785 for 45°). [verified, 2026-10]
+  - Two equal `float` values at bits 341 and 373 are half of the seeker
+    `fov` in radians (0.0314 for an AIM-9M with `fov` 3.6°).
+    [verified, 2026-10]
+  - The `float` at bit 412 is 0.5 in states 0, 2 and 4, and ±π/5 or ±2π/5 in
+    state 3. Its meaning is not known.
 
 **Sensor kind in the sensor BLK.** The `type` of most sensor BLKs is `radar`,
 also for IRSTs and optical trackers. The transceiver tells the kind: its
@@ -560,8 +598,9 @@ releases): [verified, 2026-10]
 - The low word of the weapon reference counts the dispenser groups of the
   aircraft (for example 0 to 6 on a Mirage 2000-5F).
 - The countermeasure states in the flight-model sync (a count of up to 2
-  records of two bytes, then one byte) were always empty: the count was 0 in
-  all 21,583 aircraft syncs checked.
+  records of two bytes, then one byte) were empty in all 21,583 aircraft syncs
+  of one server battle. Recent client replays do send them (see the
+  flight-model sync above).
 
 **ECS (type 6).** ECS packets define entities, templates, and components, and
 carry incremental per-entity updates. `wrpl-inspector`'s `ecs2` package decodes
