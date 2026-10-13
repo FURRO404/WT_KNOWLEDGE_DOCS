@@ -233,6 +233,9 @@ timeInviteGroup}`, `allRewards` and `missions`. [verified]
   scoreA, scoreB, statsStatus (1 = played), timeInvite, timeStart}` and
   `data.GroupStage[][] {realName, points, won, draw, defeats, buchholz_points,
   KD, frag}`. The Swiss times match the real play. [verified]
+- In a 2026-10 reply, `data.GroupMatch` was not a flat list. It was an
+  object of the form `{"0": {"<timeInvite>": [match, ...]}}`, with the matches
+  grouped by their invite time. Read all nested lists. [verified, 2026-10]
 - **Groups.** `GetArrayGroupData` / `GetArrayGroupDataShort` (`tournamentID`,
   `id_group`). Empty for Swiss. [verified]
 - **Bracket tree.** `GetArrayBracketData` / `GetArrayBracketDataShort`
@@ -242,10 +245,25 @@ timeInviteGroup}`, `allRewards` and `missions`. [verified]
   gives `[{name, url, winner, statusReplay, host, teamA, teamB}]`. `url` is the
   decimal session id of the replay. `statusReplay` is `view replay`,
   `technical victory` (a forfeit, with an empty `url`) or `wait` [js]. [verified]
+- For a Swiss tournament, send `typeBracket=Swiss` with a capital S. The
+  lowercase `swiss` gives an empty reply. `getInfoMatch` takes the same value
+  in `typeMatch`. [verified, 2026-10]
 - **One match.** `GET action=getInfoMatch&tournamentID=&idMatch=&typeMatch=`
   gives the team names, `userListA`/`userListB`, the scores, `timeInviteMatch`,
   `timeStartMatch`, `allBattleTime` and `lisUnits {ranksmin, ranksmax, class,
   maxCount, type}`. [verified]
+- More `getInfoMatch` fields, seen in 2026-10: `matchParametrs` holds the
+  map that was played (`mission[]`), `killLimit`, `scoreLimit`,
+  `isLimitedFuel` and `spectators`. `listDictTeamA` and `listDictTeamB` map
+  each `userID` to a nick. Each `lisUnits[]` entry also has the display `name`
+  of the vehicle and a `team`. In those replies `ranksmin`, `ranksmax`,
+  `class` and `maxCount` were empty. A roster can be larger than `teamSize`:
+  the 8v8 events had 9 to 10 players for each team. [verified, 2026-10]
+- The map keys in the tournament's `allLocations` do not have the same case as
+  the mission files. For example `sinai_Dom` and `tss_rheinland_Dom` are the
+  missions `cta/tanks/sinai/sinai_dom.blk` and
+  `cta/tournament/tss_rheinland_dom.blk`. Naval maps are
+  `cta/ships/<map>/<map>_ndom.blk`. [verified, 2026-10]
 - **Player stats of a match.** `POST action=tournamentInfoAll` (`tournamentID`,
   `idMatch`, `typeMatch`). [verified]
 - **Final placings.** `POST action=GetStatsTournamentShort&tournamentID={id}`
@@ -310,6 +328,19 @@ that shows only after login. Its API paths (from the page code):
   CDN gives 404 for that form and 302 to the file for the padded form
   `074b12d40024ef1e`. Pad the ID to 16 digits with zeros before you build the
   URL. [verified, 2026-10]
+- The CDN sends a 302 to the file on a second host,
+  `https://wt-replays-cdnnow.cdn.gaijin.net/{hex session id}/NNNN.wrpl`.
+  [verified, 2026-10]
+- To find out if a part exists, send a GET, not a HEAD. A HEAD gives 404 also
+  for a part that exists. A GET gives 302, and a GET with a `Range` header
+  gives 206. The last part of a replay is the one before the first 404.
+  [verified, 2026-10]
+- The CDN does not keep replays for a long time. On 2026-10-12, all parts of
+  sessions from tournaments of 2026-09-24 to 2026-09-28 gave 404, also with the
+  padded ID. The example above, which downloaded earlier in 2026-10, also gave
+  404. Sessions from 2026-10-01 and later still downloaded. The retention seems
+  to be about two weeks. The exact time is not known. Download a replay soon
+  after the match. [verified, 2026-10]
 
 ## 7. Other calls
 

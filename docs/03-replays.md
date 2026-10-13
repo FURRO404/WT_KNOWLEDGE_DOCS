@@ -301,13 +301,34 @@ those battles never sent the afterburner value. [verified, 2026-10]
 
 - The first bit of an aircraft's record is "on the ground". On all 8 jets it
   was 1 from the parked start until lift-off at 76–136 m/s, then 0.
+- After it come a `uint32` and one bit. Both were 0 in all 131,693 syncs of
+  31 replays (27 server, 4 client). [verified, 2026-10]
+- Then a flag bit for the gun triggers. It is 1 only while the pilot fires.
+  It was 1 in 1,436 of the 131,693 syncs. In four replays with gun round
+  counters, 482 of 697 flagged syncs had a counter drop in the same sync and
+  25 one sync (about 250 ms) before or after. Of the other 190, 189 were the
+  opponent in a client duel, whose counters never fell in that replay.
+  Behind the flag come four fields. [verified, 2026-10]
+  - Bit 1: machine-gun trigger.
+  - Bit 2: cannon trigger. On P-63s (four 12.7 mm guns, one 37 mm), bit 2
+    alone came with a drop of only the 37 mm counter 67 times. Bits 1 and 2
+    came with a drop of all five counters 47 times. Bit 1 alone came with
+    a drop of only the 12.7 mm counters 3 times. The single gun of a jet
+    uses bit 2. The Bf 109 E and F sent both bits together.
+  - Bit 3: always 0.
+  - A 4-bit count, then one bit for each. The bits were always 0. On props the
+    count equals the number of guns (P-63 5, Bf 109 E 4, Spitfire LF IXe 4,
+    Bf 109 F-4 3). On jets it does not (2 on a JAS 39C, 4 on a Mirage
+    2000-5F).
 - After the packed velocity, the record aligns to a byte and holds 7 bytes of
   control state. Bytes 3, 4 and 6 were always 0. Bit 0 is the low bit of the
   first byte:
   - Bits 0–3: pitch stick, 1 to 15, centre 8. It follows the load factor one
     sync later (r = +0.87).
-  - Bits 4–6: flaps, 0 to 7. Only seen above 0 on F/A-18s below about
-    130 m/s, with 7 at take-off and landing speeds.
+  - Bits 4–7: flaps, 0 to 15. In 126,000 airborne syncs of 31 replays,
+    the median speed was 149 m/s at 0, 89–106 m/s at 1 to 4, and 64–75 m/s
+    at 5 to 15. A Spitfire IX sent only 0 and 15. A Bf 109 F-4 sent 0, 3,
+    4 and 15. F/A-18s sent up to 7 at take-off. [verified, 2026-10]
   - Bits 8–11: rudder, 1 to 15, centre 8. It follows the sideslip angle one
     or two syncs later: r = +0.70 and +0.59 on two Bf 109 F-4s, +0.57 on a
     Spitfire IX and +0.52 on an F-16A. The yaw rate has the opposite sign
@@ -353,8 +374,21 @@ those battles never sent the afterburner value. [verified, 2026-10]
   The fields of the opponent are less reliable: in the J-10A duel they stayed
   constant most of the time, also with the afterburner on, and in the prop
   duels the rudder link was only r = +0.2 to +0.3.
-- No field showed the landing gear. The countermeasure states and the two
-  `uint16` values behind their flag bit were never present.
+- The sync does not carry the landing gear. In 50 take-offs from an airfield
+  (eight 2.59 jet battles), no unexplained field changed from 2 s before to
+  20 s after lift-off: not the `uint32` and bit above, the gun block, bytes 3,
+  4 and 6, the high nibble of byte 5, the pad bits before the byte alignment,
+  or the engine fields. In the same 20 s the aircraft received only three
+  MPI message types: 0xF0CC (camera), 0xD041 (three fixed payloads,
+  every 0.5 s) and 0xD047 (`FmwRpm`). It received no ECS entity message and
+  no ECS replication. [verified, 2026-10]
+- The countermeasure states and the two `uint16` values behind their flag
+  bit were never present.
+- After the last aircraft record (uid 0x7FF), the sync ends with three
+  `float` values. In a client replay they are the world position of the
+  author's own aircraft: equal to its sync position (0.0 m) in 2,195 of 2,199,
+  3,120 of 3,132 and 17,397 of 17,412 syncs of three duels. In a server
+  replay they are always 0. [verified, 2026-10]
 
 **Seeker blocks of a guided missile in flight.** The weapon sync of a missile
 carries a seeker block of a fixed bit length for each seeker kind. Read the
