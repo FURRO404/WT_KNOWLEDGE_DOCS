@@ -421,6 +421,15 @@ carries no plate id. Do not assume that a node name names the plate under the
 hit. Recover the plate from the layer geometry (thickness and position) or from
 a live capture.
 
+Each node also carries `CollisionNode` behaviour flags: the u16 at `+6` of the
+node's 8-byte meta entry, which is also the u16 at `+8` of its 48-byte record.
+The flags are TRACEABLE 0x1, PHYS_COLLIDABLE 0x2, SOLID 0x4, then
+FLAG_ALLOW_HOLE, FLAG_DAMAGE_REQUIRED, FLAG_CUT_REQUIRED, FLAG_CHECK_SIDE,
+FLAG_ALLOW_BULLET_DECAL and FLAG_ALLOW_SPLASH_HOLE. The order comes from the
+client's enum name table. SOLID decides if a hit on the node is charged from
+the mesh chord (see `06-ballistics-and-armor.md` section 4.6). On a T-80UE1,
+the hull front layers are 0x7 and most other nodes are 0x3.
+
 **Axis handedness.** Collision node vertices (after the node transform) are in
 the game's native frame. A visual or X-ray mesh exported to OBJ through the DAE
 `getOBJ()` path has z negated. So a raw collision export is the mirror image of

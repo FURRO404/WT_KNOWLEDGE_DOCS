@@ -1336,6 +1336,27 @@ Runtime functions (same build):
 | `0x184c600` | applies fragment hits by type (0 and 1: other, 2: DM part, 3: rendinst, 4 and 5: destructibles) |
 | `0x6164290` | fragment vs vehicle DM part |
 
+Kinetic record path (build md5 `7c36bf13`, 2026-10-12). Each address is an
+instruction start, and the first two fired in a live shot:
+
+| Address | Role |
+|---|---|
+| `0x619e310` | per-part hit record builder entry, `rdi` = target unit. It allocates a 0x220-byte record (vtable `0x9766248`). |
+| `0x619f87b` | the game's own `pen - cost` (`subss xmm0, xmm1`): `xmm0` = penetration on arrival (record `+0x184`), `xmm1` = cost. It runs only for a pierced plate. |
+| `0x1858d60` | hit listener (`rsi` = finished record), vtable slot `0x91f2db8` |
+| `0x132f500` | das `get_part_name`: name id = i16 at `[[X+0x20] + idx*2]`, then a lookup in the global name pool at `[0xb036540]`. The DM object at `[unit+0x100]` works as `X` for a tank. |
+
+Record fields used: armor struct at `+0x1c4` (flag; quality `+0x1c8`; nominal
+`+0x1cc`; charge `+0x1d8`; armorThrough `+0x1dc`), cos of the angle at `+0x1a0`.
+The cost is the charge when the flag is set, else max(charge, armorThrough).
+DM object: hp array at `+0x30` (count `+0x38`), part records at `+0x48`
+(stride 0x118, count `+0x50`), armor class pointer at part `+0x48`.
+
+The penetration on arrival at a plate is not always the residual of the plate
+before. In one live APFSDS shot through a five-layer hull front, the values
+moved by -1.6 to +9.0 mm between plates.
+
+
 ## 4. Armor interaction
 
 ### 4.1 Line-of-sight thickness
@@ -1397,6 +1418,26 @@ reverse-engineering notes do not publish the exact per-class quality numbers in
 this file. Read them from `armor_classes.blk`. Confidence: **Partial** for the
 runtime combine, **Confirmed** for the struct layout.
 
+The runtime quality is a product:
+
+```
+q = mechQuality * armorQuality
+```
+
+- `mechQuality` is the part's `{mech}ArmorQuality`, else the class's, else 1.
+- `armorQuality` is the part's scalar, else the class's, else 1.
+- A part key replaces the same class key. It does not replace the other factor.
+
+Live check (build `7c36bf13`, 125 mm APFSDS into a T-80UE1, 29 parts): the
+hull front steel layers set `genericArmorQuality = 1.2` on class
+`RHAHH_tank_modern` (`armorQuality = 1.1`) and charged at q = 1.32. A rule that
+takes the first key it finds gives 1.2 and is wrong. Confidence: **Confirmed**.
+
+An APFSDS bullet with no `damageType` uses the `generic` qualities, not
+`genericLongRod`. In the same check, `ERA_K_V` plates with
+`genericArmorQuality = 1.7` and `genericLongRodArmorQuality = 0.5` charged at
+q = 1.7. Confidence: **Confirmed** for this shell.
+
 ### 4.4 Composite and NERA directionality
 
 Composite and NERA armor effectiveness is directional. The effectiveness is
@@ -1404,8 +1445,10 @@ low for a plunging or near-normal hit on the NERA sandwich. The effectiveness
 is high for an oblique or frontal hit. A single scalar quality factor cannot
 represent this behavior.
 
-An `armorThrough` value below 0.1 marks a part as mesh-charged. Live records
-show it on more than the class `leopard_2a5_turret_nera`: the M1A1 HC lower
+Composite and NERA parts are usually mesh-charged, but `armorThrough` is not
+the test. The test is the `SOLID` flag of the collision node (section 4.6).
+Many composite parts carry `armorThrough < 0.1`, and not only the class
+`leopard_2a5_turret_nera`: the M1A1 HC lower
 front composite (360 mm nominal, quality 0.377) and two Leopard 2A5 turret
 composite blocks (440 mm at quality 0.75 and 520 mm at quality 0.55) also carry
 `armorThrough = 0.01`. The per-part charge rule for these parts is in
@@ -1430,11 +1473,35 @@ through the collision mesh.
   where the mesh is thinner than the nominal. Examples: an M1A1 HC heavy skirt
   (65 mm, q 0.4) took 35.3 mm, and a Leopard 2A5 turret screen (80 mm, q 0.9)
   took 86.3 mm.
-- **Mesh-charged parts:** `charge = q × chord × cos θ × S(θ)`. This covers
-  classes with `armorThrough < 0.1` (composites and NERA), parts with
-  `variableThickness`, and engine parts of class `armor_tank_engine`. The
+- **Mesh-charged parts:** `charge = q × chord × cos θ × S(θ)`. The
   `chord × cos θ` term is the mesh thickness along the face normal. Errors were
   below 0.15 % on all composite records.
+- **Which parts are mesh-charged:** a part is mesh-charged when its collision
+  node has the `CollisionNode::SOLID` behaviour flag (0x4) and neither the part
+  nor its armor class sets `ignoreSolidDimension`. The flag is set in the
+  model's collision resource, so two parts with the same class and the same
+  closed mesh can take different paths. Composites, `variableThickness` parts,
+  engine parts and cast turret parts are usually SOLID nodes, but the class
+  and these keys are not the test.
+  - Code (build `7c36bf13`): the trace-to-hits function `0x61880f0` reads the
+    node's flags (`[collres+0xb0] + node*8 + 6`, bit 0x4). For a SOLID node it
+    looks for the exit face of the same node and stores the chord. If it finds
+    no exit face, it drops the hit. The armor struct filler `0x620fca0` takes
+    the chord when that entry flag is set and class byte `+1`
+    (`ignoreSolidDimension`) is 0. The class loader also reads
+    `minSolidArmorThickness` into class `+8`, which is a floor in the chord
+    evaluator.
+  - In the collision resource file (`0xACE50003` format), the flags are the u16
+    at `+6` of each 8-byte node meta entry. The same value is at `+8` of the
+    48-byte node record.
+  - Live check, T-80UE1 with a 125 mm APFSDS: 20 of 20 parts follow the flag.
+    The hull front layers (flags 0x7) took the chord. `body_back_dm` and
+    `superstructure_back_dm` (same class, flags 0x3) took the nominal path.
+  - Confidence: **Confirmed**.
+- **Parts with no armor:** a part whose base charge is 0 for the carrier (for
+  example `genericArmorQuality = 0` on an x-ray cover part) made no hit record
+  live, so it costs nothing. It does not cost its `armorThrough`. Confidence:
+  **Partial** (one live part).
 - **Thin crew, equipment and ammo parts:** `charge = q × T`, with no slope.
 - **Caps:** the per-mechanism `{mech}EffectiveThicknessMax` of the class applies
   after the slope (for example 15 mm for wheels, 20 mm for tracks, 1.1 mm for
