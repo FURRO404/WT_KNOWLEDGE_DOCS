@@ -761,16 +761,47 @@ events. [verified, 2026-10, 51,157 messages]
 - `EventDamagePartRestoredNetMsg` (repair) has the same two ids, then a
   `float` (the restored part HP fraction, for example 0.7 or 1.0).
 - The local part id is always smaller than the part count of the same
-  vehicle in 0xF0C2 (7,942 of 7,942). It is not an index into the
-  `<model>_dm_skeleton` node list or into the `DamageParts` list of the
-  unit BLK: these lists do not give the same name for the same global id.
-- On one vehicle a local id always has the same global id (2,123 of 2,123
-  pairs). The same global id occurs on many vehicles with different local
-  ids (262 global ids on more than one vehicle). So the global id is a
-  game-wide part-name id.
-- Global ids 1524 and 1526 were killed in the 100 ms around 105 and 88 of
-  147 `EventBrakeTrackNetMsg` messages. They are probably the two track
-  parts. [probable]
+  vehicle in 0xF0C2 (7,942 of 7,942). On one vehicle a local id always has
+  the same global id (2,123 of 2,123 pairs). The same global id occurs on
+  many vehicles with different local ids.
+- Each part kill comes as two `EventDamagePartKilledNetMsg` at the same
+  millisecond. One has the tail `00 00`, the other `ff ff` or another
+  `uint16`. The meaning of the tail is not known.
+
+**Part names.** The global part id is an index into a list of part names.
+The game makes this list from `config/damagemodelparts.blk` in
+`aces.vromfs.bin`. [verified, 2026-10, 2,123 of 2,123 pairs on 93 vehicles]
+
+- Read the BLK in file order and go into each sub-block. Skip `default` and
+  `default_v1`.
+- A block with no sub-block is one part. Its name is the block name.
+- A block with a `template` parameter is a numbered series. `name_#N#` gives
+  the numbers 1 to N. `name#a:b#` gives the numbers a to b. The number of
+  digits in `N` (or in `a`) sets the zero padding, so `#05#` gives `01` to
+  `05` and `#2#` gives `1` to `2`. The number can be in the middle of the
+  name (`body_#15#_front`).
+- A block with sub-blocks is a group. Its name is not a part.
+- Add `_dm` to each name. The global id is the list index plus 2. Examples:
+  2 `body_dm`, 858 `engine_dm`, 912 `transmission_dm`, 1447
+  `cannon_breech_dm`, 1524 `track_l_dm`, 1526 `track_r_dm`, 1629
+  `commander_dm`, 1630 `driver_dm`, 1631 `gunner_dm`, 1652 `loader_dm`.
+  The 2.59 data gives 5,076 names. The largest id seen in replays was 4,314.
+- Each generated name was a node of the vehicle's `<model>_dm_skeleton`. The
+  ids were the same in replays from three different servers. They change
+  when the BLK changes, so build the list from the BLK of the same game
+  version.
+- The list for game 2.59 is in `data/dm_part_names_2.59.json`.
+
+**Local part id.** Read the leaf blocks of `DamageParts` in the unit BLK in
+file order, nested blocks included. Keep only the parts that the vehicle
+model has. The local id is the index in this list. With the nodes of
+`<model>_dm_skeleton` as the filter, all ids agree on 73 of 75 vehicles
+(1,923 of 2,002 pairs). On the other vehicles the skeleton has a few hull
+nodes that the damage model does not use. [verified for the order, probable
+for the filter, 2026-10]
+
+**0xF13A.** Field 2 is the local part id of a part that is killed at that
+time (12 of 12 on tanks, mostly crew). [verified, 2026-10]
 
 **Reflection messages 0xF02D, 0xF0AA, 0xD136.** They share one layout.
 [verified, 2026-10, 90,179 + 58,734 + 92 messages, no read error]
@@ -801,13 +832,19 @@ events. [verified, 2026-10, 51,157 messages]
 for aircraft, type 17 for ground models), always in pairs (24,002 each).
 [verified for the counters, 2026-10]
 
-- 0xF09A (`DvmUnreliableHpReflectionData`) ends with two `uint32`
-  sequence numbers: a base and the current number. The current number grows
-  by 1 per message of the unit (23,467 of 23,659 steps; the rest repeat).
-  The base is never larger. The first message of a unit is long (a full
-  state); later messages are short when nothing changed, for example
-  `80 01 a0 ff ff ff ff ff ff ff`. It is probably a delta against the base
-  state. [probable]
+- 0xF09A (`DvmUnreliableHpReflectionData`): a varint bit length, then an
+  `int32`. [verified for the layout, 519 of 519 deltas, 2026-10]
+  - If the `int32` is positive, the message is a full HP state, and the value
+    is the bit size of the packed state: about 18 bits per part, for example
+    3,184 bits for 179 parts. Aircraft use 1,336 to 1,456 bits.
+  - If the `int32` is negative, the message is a delta. The value is
+    −(96 + 24 × n), and n records `{uint16 byte offset, uint8 new byte}`
+    follow. Then come an `int32` equal to the first value + 95, the base
+    number and the current number (two `uint32`).
+  - The records write new bytes into the packed state. The new bytes often
+    have one bit cleared (0x7F, 0xBF ... 0xFE). The bit layout for each part
+    and the packing of the full state are not known.
+  - The current number grows by 1 for each message of the unit.
 - 0xF0CB (`DvmDamageDataForReferee`) keeps the same bytes until the unit
   takes damage, then grows (from 14 to about 60 bytes before the unit dies).
   The first `uint16` grows with the length. It is probably the damage record
