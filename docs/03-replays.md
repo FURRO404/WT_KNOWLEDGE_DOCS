@@ -321,8 +321,13 @@ those battles never sent the afterburner value. [verified, 2026-10]
     Bf 109 F-4 3). On jets it does not (2 on a JAS 39C, 4 on a Mirage
     2000-5F).
 - After the packed velocity, the record aligns to a byte and holds 7 bytes of
-  control state. Bytes 3, 4 and 6 were always 0. Bit 0 is the low bit of the
-  first byte:
+  control state. Byte 6 was always 0. Bytes 3 and 4 were 0 on fighters. In
+  client replays, byte 3 was 15 on aircraft with bomb bays (B-29, Tu-95, B-52,
+  F-117 and others), probably the bay doors. The high nibble of byte 5 was
+  not 0 on swing-wing aircraft (F-111, F-14, MiG-23BN, Su-17M4), probably the
+  wing sweep. The high nibble of byte 4 was 15 on some aircraft (Typhoon,
+  Hunter, F-16D, MiG-19, Yak-28), meaning not known. [probable, 2026-10] Bit 0
+  is the low bit of the first byte:
   - Bits 0–3: pitch stick, 1 to 15, centre 8. It follows the load factor one
     sync later (r = +0.87).
   - Bits 4–7: flaps, 0 to 15. In 126,000 airborne syncs of 31 replays,
@@ -345,31 +350,73 @@ those battles never sent the afterburner value. [verified, 2026-10]
     throttle with r = 0.99. The cockpit value lags the lever, so the steps do
     not map one to one. Any throttle above 100% (WEP or afterburner) reads
     15.
-- Each engine has a state byte, then an optional `int16` and an optional
-  `int8`:
-  - The state byte is 7 while the engine runs and 8 when it stops. 0 and 6
-    occur for short times. On a twin-engine jet the two engines can change
-    at different times.
-  - The `int16` (scale 1.1) is the afterburner throttle of a jet, 1.0 to
-    1.1, sent only while it is above 1.0. It was equal to the cockpit
-    throttle (median difference 0.0000) in all syncs of two client duels.
-    With it, the median excess power was +0.57 g in the same flight band.
-    The props never sent it, also at WEP (cockpit throttle 1.1): not in
-    two client duels and not in 6,310 syncs of six server Bf 109 E duels.
-    No other message marks a WEP switch: at 31 switches in a Spitfire duel,
-    the only packets near them were damage updates at deaths. Thus a prop's
-    WEP is in the replay only for the author of a client replay (cockpit id
-    240 reaches 1.1). For every other prop, bits 40–43 read 15 at both
-    100% and WEP.
-  - The `int8` (scale 1.0) is sent only when it is below 1.0. It falls when
-    the engine is hit: on a Bf 109 it went 0.91, 0.83, 0.46, 0.40 while the
-    RPM fell from 2,634 to 1,452. It is 0 when the state byte is 8. It is
-    probably the engine's health, not a pilot input.
-  - The last two bytes of each engine were always 0 on jets. On the two
-    props they take 229 values from 0 to 255, almost equal to each other. On
-    the Bf 109 they stayed 0 while the water temperature was below about
-    100 °C and grew while it held near 106 °C. They are probably the water
-    and oil radiator positions (the Bf 109 radiators are automatic).
+- Each engine record has a flag bit A, a state `uint8`, an `int16` if A is
+  set, a flag bit B, an `int8` if B is set, and two `uint8`. The engine count
+  is equal to the number of `EngineN` blocks in the flight model. This count
+  includes rocket boosters, for example 3 on an A-4N and 14 on a B-66B. It
+  agreed in 998,941 of 998,941 syncs of 158 replays. [verified, 2026-10]
+- The state byte: [verified, 2026-10]
+  - 7: the engine runs.
+  - 8: the engine is destroyed. In server replays the health is 0 in all
+    19,549 records with state 8. When one engine of a Rafale was hit, only
+    that engine went to 8, in the same sync as the damage message.
+  - At a kill, the state changes a median of 0.27 s after the kill message:
+    to 8 on jets (51 of 60 kills), and mostly to 0 on props (19 of 27). Some
+    aircraft keep 7 until they hit the ground.
+  - A start on the ground goes 0, 1, 2, 3, 4, 5, then 7, in about 12 s.
+  - 6 occurs for 4 to 24 s, mostly with the throttle at 0. It is probably a
+    shut-down.
+  - Rocket boosters show 0 while they are not in use.
+- The `int16` (scale 1.1) is the engine throttle with afterburner. It is sent
+  only while the throttle is above 1.0. [verified, 2026-10]
+  - Only engines with `Afterburner.Type` 3 and `AfterburnerBoost` above 1.0 in
+    the flight model send it: 705,949 of 969,746 records. Jets with no
+    afterburner, engines with `AfterburnerBoost` 1.0 (B-66B, Buccaneer, Sea
+    Vixen, F-117), water-injection Harriers, rocket boosters and all props
+    never sent it, also at a cockpit throttle of 1.1.
+  - It is equal to the cockpit ids 240, 247 and 248 (median difference
+    0.0000). 58 of 11,938 syncs differ, all at a throttle change.
+  - In server replays it comes only while the throttle lever reads 15
+    (55,679 of 55,680). In client replays the lever of the other aircraft
+    often reads 0.
+  - In two 4v4 battles of Rafales and Su-27s, alive aircraft sent it in 89% of
+    syncs: 89–93% on the ground, 95–97% in the first 60 s in the air, and
+    72–79% within 3 km of another aircraft. Dead aircraft sent it in 0% of
+    syncs. The sync of a dead aircraft continues to the end of the replay, so
+    a share over all syncs is much lower (62% in one battle).
+  - No message marks the WEP of a prop: at 31 WEP changes in a Spitfire duel,
+    the only packets near them were damage updates at deaths. Thus the WEP of
+    a prop is in the replay only for the author of a client replay (cockpit
+    id 240 reaches 1.1). For all other props, the lever reads 15 at both 100%
+    and WEP.
+- The `int8` (scale 1.0) is the engine health. It is sent only below 1.0
+  (maximum 126/127). [verified, 2026-10]
+  - It starts in 5 s or less after a hit in 240 of 254 cases.
+  - It can then fall in steps of 1/127 for many seconds, probably because of
+    fire.
+  - It is 0 when the state is 8.
+- The two `uint8` are the radiator positions, 0 to 255. [verified, 2026-10]
+  - They are 0 on all jets.
+  - They are equal on an aircraft with a common radiator (Spitfire,
+    `hasCommonRadiator` true).
+  - They are different on aircraft with separate water and oil radiators
+    (Bf 109, P-63, Yak-1B). Which byte is the water radiator is not known.
+  - Values 63, 101, 127 and 255 occur often. They are probably manual
+    radiator settings.
+  - In a client replay they are 0 for the aircraft other than the author.
+- The RPM is not in the flight-model sync. MPI message 0xD047 (`FmwRpm`)
+  carries it. [verified, 2026-10]
+  - The extended object id is the ECS entity handle of the aircraft.
+  - The payload is one byte with the engine count in the high nibble, then
+    one `uint16` RPM for each engine.
+  - The RPM is in steps of about 9.55 (1 rad/s). It follows cockpit id 81
+    with r = 0.97 to 1.00.
+  - It comes every 3.1 s for each aircraft in a server replay, and every
+    0.11 s for the author in a client replay.
+  - A stopped jet engine reads 2,000.
+- Manifold pressure, propeller pitch and mixture were not found in server
+  data. Only the cockpit message (0xD04A) of a client replay has them.
+  [verified, 2026-10]
 - In a client replay, the fields of the author's own aircraft are complete.
   The fields of the opponent are less reliable: in the J-10A duel they stayed
   constant most of the time, also with the afterburner on, and in the prop
