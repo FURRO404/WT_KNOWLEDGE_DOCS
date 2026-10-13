@@ -672,8 +672,45 @@ arcade tanks and air duels, 294 MB of packet stream. [verified, 2026-10]
   The engine speed goes to 0 at the kill (70 of 70).
 - The spawn byte holds two 4-bit counters. Both increase at each new spawn of
   the same player (51 of 51).
-- Ships use the same record. Their state adds a ship block (propulsion, and
-  the rudder with 127 = centre). The rest of the ship state is not known.
+- Ships use the same record. Their state adds a ship block after the engine
+  byte. After the ship block a ship sends 2 bits (always 0), then the same
+  tail as a tank: the turret-angles bit, the "player in vehicle" bit, one
+  weapon record for each weapon, the sensor count, the countermeasure count
+  and the 4-bit designation count. All 233,534 ship states of 3 naval
+  battles decode to the end. A ship sends no alive bit: the 2 bits are 0 on
+  every live ship. [verified, 2026-10]
+- The ship block: [verified, 2026-10, 233,534 ship states]
+  - Bytes s3 and s4 are always equal: the throttle (127 stop, 254 full
+    ahead, 0 full reverse). Byte s5 is the rudder (127 centre). The four
+    drive bytes of a tank are 0 on ships.
+  - A bit c is 1 exactly when s1 or s2 is not 0 (11,949 records). While c is
+    0, the three bytes w0 to w2 are 127. Probable: c is flooding and s0 to s2
+    are water levels. They go up and down, and the hull goes down while they
+    go up. Only destroyers and large boats set c. s0 starts to increase at
+    the kill and goes to 255 while the ship sinks. The meaning of w0 to w2 is
+    not known. [probable, 2026-10]
+  - The list has one byte for each `transmission_NN_dm` part of the ship
+    (18 of 18 ship types). 255 is intact, and the value decreases with hits.
+    After the kill it is 102 or 40. Probably the health of each propeller
+    shaft.
+- The weapons of a ship: [verified, 2026-10]
+  - The order is the weapons of the weapon preset first, then the
+    `commonWeapons` of the ship. A Yugumo with 4 preset weapons sends 14
+    records: 2 torpedo launchers, 2 mortars, 6 guns and 4 AA guns.
+  - In a twin mount, only the first barrel sends angles.
+  - The yaw is in degrees from the rest direction of the mount. The rest
+    direction is 0, ±90 or 180 degrees from the bow. A mount that the player
+    controls points at the aim within 2 degrees in 75 to 97% of samples.
+  - The two aim bits are always equal: 1 when the player controls the mount,
+    0 for an AI gunner. Ships send no barrel heat and no third angle.
+  - The mount index of 0xD020 is the weapon index of 0xF074, and the angles
+    are the same values in degrees.
+- The reflection data of a ship holds all base variables 5 to 64, with the
+  expected sizes and values. The variable ids go to 92 on fortifications, to
+  137 (and 192, 193) on tanks and to 156 on ships. Ids 135, 137 and 138
+  have a different size on ships and tanks, so decode the ids from 67 up by
+  unit type. Variable 72 changes to 1 at the kill (12 of 12). Variable 132
+  changes to 1 20 to 60 s after the kill. [verified, 2026-10]
 
 **Camera message 0xF0CC.** [verified, 2026-10]
 - It is an id-field message. Field 1 is the camera quaternion (x, y, z, w).
