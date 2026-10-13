@@ -803,6 +803,24 @@ for the filter, 2026-10]
 **0xF13A.** Field 2 is the local part id of a part that is killed at that
 time (12 of 12 on tanks, mostly crew). [verified, 2026-10]
 
+**Parts from modifications.** A modification can add parts to the damage
+model, so the local ids and the part count change with the fitted
+modifications. On an M18 with the add-on armour modification, all local
+ids were 12 higher than on an M18 without it (10 of 10 ids). The 12 parts
+are the `ex_decor_*_dm` leaves of `DamageParts` before that position, which
+the base `_dm_skeleton` does not have. Thus build the part list from the
+model with its fitted modifications. Skeleton nodes that are not
+`DamageParts` leaves (for example `antenna_dm` and many `ex_decor_*` and
+`ex_lantern_*` nodes) are not parts. [probable, 2026-10]
+
+**Repeated part kills.** The server sends the kill of a part again while it
+stays dead. In the first group of messages for a part, exactly one has a
+tail that is not `00 00`. After that the same part comes again with the tail
+`00 00` about every 100 to 400 ms. One `engine_dm` came 104 times in 1.5 s,
+probably fire on a dead part. One M18 had 220 part-kill messages for 10
+parts. To count the parts that were killed, count each (unit, local id) one
+time. [verified for the repeats, 2026-10]
+
 **Reflection messages 0xF02D, 0xF0AA, 0xD136.** They share one layout.
 [verified, 2026-10, 90,179 + 58,734 + 92 messages, no read error]
 
