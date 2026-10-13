@@ -544,6 +544,438 @@ this wire format. Key points:
 
 **Other in-packet compression.** LZ4 covers ECS snapshots as noted above.
 
+### 2.4a Ground vehicles, cameras and missiles
+
+Data for the three blocks below: 20 server replays of game 2.59 (version
+`0x00018C1C`): combined-arms battles of 8v8 to 4v4, naval 3v3, jets 4v4,
+arcade tanks and air duels, 294 MB of packet stream. [verified, 2026-10]
+
+**Ground vehicle sync 0xF074.** [verified, 2026-10]
+- 0xF073 does not occur in 2.59 server replays. 0xF074 occurs in all ground
+  and naval battles.
+- The payload starts with a varint, the bit size of the sync (2 bytes in
+  187,012 packets). Then follow a `uint16` first uid, a `uint16` end uid
+  (exclusive), a `float` server time in seconds and a `uint16` that is
+  always 0.
+- Then, for each uid, a bit tells if a record is present. The record has a
+  weapon count, a delta-compressed vehicle state, an optional aim point and
+  an optional weapon-state list.
+- The state uses Dagor net delta compression with 32 history slots and a
+  13-bit packet number. A full state comes as plain bytes. A partial state is
+  the XOR of a base state and an "rle0ki" stream.
+- The state holds a spawn byte, heading, pitch and roll (`int16`), the
+  position, the velocity (`int16`, ×100/32767 m/s), the angular velocity
+  (`int8`, ×π/127 rad/s), the two track speeds (`int8`, 0.1266 m/s per unit),
+  steering, throttle (127, 0 or −127), engine speed (`uint8`), flags, and one
+  record for each weapon. The velocity agrees with the position change: median
+  error 0.00 m/s (n = 21,765).
+- The weapon record holds a "disabled" bit, the barrel heat (`uint8`), and the
+  turret yaw and elevation in degrees relative to the hull (`int16`,
+  ×180/32767). The turret yaw agrees with the gun direction of the camera
+  message minus the hull heading: median 0.31° (n = 24,689).
+- The weapon-state list holds, for each weapon, the battle time of the last
+  shot, the time when the weapon is ready again, the rounds left for each ammo
+  type, and a byte. The low nibble of that byte is the loaded ammo type (1,288
+  of 1,289 shots). The high nibble is the selected type.
+- The aim point has four `float` values: the negative world yaw of the aim in
+  degrees, the aim pitch in degrees, and two equal values, the distance to the
+  point below the aim (10,000 m or less). It is present only while a player is
+  in the vehicle. The "player in vehicle" bit goes to 0 about 10 s after the
+  kill (median, n = 52).
+- One state bit goes to 0 in 100 ms or less after the kill (66 of 70 kills).
+  The engine speed goes to 0 at the kill (70 of 70).
+- The spawn byte holds two 4-bit counters. Both increase at each new spawn of
+  the same player (51 of 51).
+- Ships use the same record. Their state adds a ship block (propulsion, and
+  the rudder with 127 = centre). The rest of the ship state is not known.
+
+**Camera message 0xF0CC.** [verified, 2026-10]
+- It is an id-field message. Field 1 is the camera quaternion (x, y, z, w).
+  The view direction is (0, 0, 1) turned by it. In the gunner sight it is
+  0.26° from the gun (median, n = 3,892).
+- Field 3 is the gun direction, not the camera direction.
+- Field 4 is the camera kind (29 third person, 39 gunner sight). Field 5 is
+  the zoom.
+
+**Gun angles 0xD020.** [verified, 2026-10]
+- Gun mounts that an AI aims send this message: AI flak guns, and the mounts
+  of ships.
+- It has four 32-bit fields: a mount index, the yaw in degrees, the elevation
+  in degrees, and an unknown `float`. The yaw and the elevation are equal to
+  the next turret angles in the ground sync (0.00°, n = 2,235).
+
+**Store sync 0xF11A.** [verified, 2026-10]
+- It carries only missiles and rockets. It does not carry gun shells. A tank
+  battle with no aircraft has no 0xF11A.
+- Each record has a time tick in 1/48 s (0–42 ms after the packet time,
+  n = 88,007).
+- The velocity is three `int16` values divided by 16, in m/s (median error
+  1.5 m/s, n = 77,641).
+- Hit results name a missile as `index << 8 | generation`. In one battle, 15
+  of 106 hit results named a 0xF11A entity.
+
+### 2.4b Spawns, ECS messages and damage state
+
+**Unit spawns.** A unit spawn makes two records. [verified, 2026-10]
+
+- First, an MPI message 0xD039 (`DeferredReplicatedObjectCreate`) to the
+  global object `0x5802`. The payload is `00 01 00 cc`: a check byte, an
+  `int16` flag of 1, and the class id `cc`. Class 5 is `FlightModelWrap`
+  (aircraft). Class 6 is `IGroundModel` (tank, ship, fortification). For
+  these two classes the payload is always 4 bytes (3,935 of 3,935). The
+  record holds no unit id, no player and no vehicle name.
+- Then, about 41 ms later (median, maximum 186 ms, 406 player spawns), the
+  type 6 ECS creation (`0x24`, or `0x25` with LZ4) of the unit entity. 2,115
+  of 2,120 unit entities had a 0xD039 of the same class in the 300 ms
+  before them. Most 0xD039 records without an entity come in the batch at
+  battle start (1,586 of 1,820).
+- So "player X spawned vehicle Y as unit Z at time T" comes from the ECS
+  entity, not from 0xD039. The entity components are:
+
+  | Component | Type | Meaning |
+  |---|---|---|
+  | `uid` | `int` | Unit id (low 11 bits). The kill record and the flight stream use it. |
+  | `unit__className` | string | Vehicle: `spitfire_f24`, `tankModels/fr_amx_m4`, `ships/jp_destroyer_yugumo`, `structures/ussr_122mm_m30`, or `dummy_plane`. |
+  | `unit__playerId` | `int` | Player slot index. `-1` for a unit with no player. |
+  | `unit__missionName` | string | Mission slot, for example `t1_player05_0`. A support unit adds a suffix, for example `t1_player05_0_support_0005cc01`. |
+  | `team` | `int` | Team. |
+  | `unitType` | `int` | 0 aircraft, 3 tank, 5 ship, 8 fortification. |
+  | `ownedByPlr` | entity id | The player entity. |
+  | `unit_storage__aircraft`, `__tank`, `__ship`, ... | field table | Spawn data, below. |
+
+- The entity template names the domain: `aircraft+player_unit`,
+  `tank+player_unit`, `ship+player_unit`, `fortification`.
+- At battle start each player slot of the mission (32 to 64 in these
+  battles) gets a `dummy_plane` entity with a `uid`. A later vehicle of the
+  same player kept that `uid` in 239 of 406 spawns and got a new `uid` in
+  167. A `uid` is thus not fixed for a player. To name the vehicle of a
+  `uid` at a time, take the newest unit entity with that `uid` that was
+  created before that time.
+- The kill check: in 261 of 261 kill records (0xF058) with a killer, field 2
+  (killer vehicle) equals `unit__className` (without the `tankModels/` or
+  `ships/` prefix) of the newest entity with the killer `uid` (field 4).
+  This held for 172 tank, 62 aircraft and 27 ship killers.
+- The storage component is an `IdFieldSerializer255` table. Fields: 5 spawn
+  `TMatrix`, 6 unit name, 7 mission slot name, 8 loadout name (for example
+  `spitfire_f24_rockets` or `custom5`), 9 skin, 13 owner player slot, 0x33
+  weapons (count, then `launcher`, `bullet`, `count` per weapon; then the
+  weapon modifications and flight-model modifications), 0x34 camouflage
+  BLK, 0x40 custom weapons BLK.
+
+**ECS packet ids (type 6).** The first payload byte is the packet id.
+[verified, 2026-10]
+
+| Id | Meaning | Share of stream |
+|---|---|---|
+| `0x20` | Entity message | 0.57% |
+| `0x21` | Entity message, LZ4 body | 0.02% |
+| `0x22` | Component replication | 0.14% |
+| `0x23` | Component replication, LZ4 | 0.00% |
+| `0x24` | Entity creation | 0.11% |
+| `0x25` | Entity creation, LZ4 | 0.45% |
+| `0x26` | Entity destruction | 0.01% |
+
+**ECS entity messages (`0x20`, `0x21`).** These carry the game's network
+events. [verified, 2026-10, 51,157 messages]
+
+- Layout: the id byte, the entity id (2, 3 or 4 bytes, see below), one
+  byte with the message class id in the high bits, then the message body.
+  For `0x21`, the body is one raw LZ4 block.
+- Entity id: read a little-endian `uint16`. If bit 0 is 1, it is the 2-byte
+  form: index = value >> 2, generation = bit 1. If bit 1 is 1, a generation
+  byte follows (generation = byte + 2). Else a second `uint16` follows
+  (4-byte form). 39,812 messages used the 2-byte form and 11,345 the 3-byte
+  form. The index equals the MPI extended uid of the same unit shifted right
+  by 10.
+- Class id byte: the top `n` bits are the class id, the next bit is an odd
+  parity bit of the class id, the rest is padding. `n` is the bit length of
+  the larger of the two counts in the type 8 packet (6 for 50 messages).
+  The parity bit was correct in 51,157 of 51,157 messages.
+- The class id indexes the server-to-client message hashes of the type 8
+  packet, sorted in ascending order. The type 8 payload is a `uint16` count,
+  then that many `uint32` hashes, then a `uint16` count of client-to-server
+  hashes. The client-to-server hashes come first.
+- A message hash is the 32-bit FNV-1 hash (not FNV-1a) of the class name.
+  An ECS event sent on the network has the class name of the event plus
+  `NetMsg`. 42 of 50 server-to-client names were found, for example
+  `EventDamagePartKilledNetMsg` (`0xd9bb0dac`), `EventSpawnBulletNetMsg`
+  (`0x9503de54`), `DasEventMsg` (`0x9aae167c`).
+- The largest classes by bytes: `DasEventMsg` (9,311 messages),
+  `0x5ef9d823` (unnamed, 3,616), `EventSpawnBulletNetMsg` (4,890),
+  `EventDamagePartKilledNetMsg` (13,627), `EventShellVisualExplosionNetMsg`
+  (3,616), `EventRepairSystemNetSyncNetMsg` (6,314), `0x2a247962`
+  (unnamed, 4,649), `EventOnUnitLaunchShellNetMsg` (3,661).
+
+**Part killed and part restored.** [verified for the ids, 2026-10]
+
+- `EventDamagePartKilledNetMsg` goes to the unit entity. The body is a
+  `uint16` local part id, a `uint16` global part id, and two more bytes
+  (`00 00` in 4,658 messages, `ff ff` in 2,070, other values in a few).
+- `EventDamagePartRestoredNetMsg` (repair) has the same two ids, then a
+  `float` (the restored part HP fraction, for example 0.7 or 1.0).
+- The local part id is always smaller than the part count of the same
+  vehicle in 0xF0C2 (7,942 of 7,942). It is not an index into the
+  `<model>_dm_skeleton` node list or into the `DamageParts` list of the
+  unit BLK: these lists do not give the same name for the same global id.
+- On one vehicle a local id always has the same global id (2,123 of 2,123
+  pairs). The same global id occurs on many vehicles with different local
+  ids (262 global ids on more than one vehicle). So the global id is a
+  game-wide part-name id.
+- Global ids 1524 and 1526 were killed in the 100 ms around 105 and 88 of
+  147 `EventBrakeTrackNetMsg` messages. They are probably the two track
+  parts. [probable]
+
+**Reflection messages 0xF02D, 0xF0AA, 0xD136.** They share one layout.
+[verified, 2026-10, 90,179 + 58,734 + 92 messages, no read error]
+
+- 0xF02D: a flag byte. 1 means: a varint packed size, a varint raw size,
+  and a zstd block that holds the rest. 0 means: the rest follows. 0.5% are
+  compressed. 0xF0AA has no flag byte. 0xD136 always has flag 1 and comes
+  with the full-state resend about every 90 s.
+- The rest: a `uint16` count of objects. For each object: a `uint16` byte
+  size, a `uint16` MPI object id (with a varint extended uid when the low 11
+  bits are `0x7FF`), then an `IdFieldSerializer255` table of reflection
+  variables. Table: `uint16` offset of the size codes from the table start,
+  `uint16` with the variable count in the low 12 bits and the bits per id in
+  the top 4 bits, the variable data, the variable ids (packed, just before
+  the size codes), the 3-bit size codes.
+- The object type is the object id >> 11: 0 aircraft (`FlightModelWrap`),
+  1 ground model (tank, ship), 11 global, 12 and 13 effects, 14 player, 15
+  team, 16 and 17 damage state of an aircraft and of a ground model, 22
+  mission area, 25 weapons.
+- The vehicle objects (types 0 and 1) send variable ids that the known
+  variable list (ids 5 to 64) does not hold: 2, 12, 13, 54 and 67 to 137.
+  They are 71% of the type 1 variable bytes. The largest is id 126 on
+  tanks: 1,344 bits, 8,334 times.
+- The damage-state objects (types 16, 17) send variable 3 (a flag byte, a
+  `uint16` count, then the entries) and variable 4 (38 bits, not decoded).
+
+**0xF09A and 0xF0CB.** They go to the damage-state object of a unit (type 16
+for aircraft, type 17 for ground models), always in pairs (24,002 each).
+[verified for the counters, 2026-10]
+
+- 0xF09A (`DvmUnreliableHpReflectionData`) ends with two `uint32`
+  sequence numbers: a base and the current number. The current number grows
+  by 1 per message of the unit (23,467 of 23,659 steps; the rest repeat).
+  The base is never larger. The first message of a unit is long (a full
+  state); later messages are short when nothing changed, for example
+  `80 01 a0 ff ff ff ff ff ff ff`. It is probably a delta against the base
+  state. [probable]
+- 0xF0CB (`DvmDamageDataForReferee`) keeps the same bytes until the unit
+  takes damage, then grows (from 14 to about 60 bytes before the unit dies).
+  The first `uint16` grows with the length. It is probably the damage record
+  that the game uses to give kill and assist credit. [probable]
+
+**0xD039 batches.** A 0xD039 with bit 15 of the `int16` flag set holds a
+zstd block (varint packed size, varint raw size). In these replays they come
+about every 90 s and hold large objects, mostly class 14 (`ObjectsGroup`,
+the map objects). [verified for the frame, 2026-10]
+
+### 2.4c Other MPI messages
+
+Sample: 20 server replays of game 2.59
+(version `0x00018C1C`): 13 combined arms, 3 naval, 2 jet 4v4, 2 air duels.
+"Object kind" is `object id >> 11` (0 aircraft, 1 ground unit or ship,
+11 global, 16/17 damage-model objects, 24 interactive object). A field number
+is a field of the IdFieldSerializer32 table. An offset counts from the start
+of the MPI payload. Many global messages are sent one time per receiving
+player, so the replay holds the same packet 2 to 8 times at the same
+millisecond.
+
+#### Aircraft
+
+**0xD048, ground contacts (no name in the parser).** Object kind 0. The server
+sends it about every 0.2 s while an aircraft touches the ground: after a
+landing, a crash landing, or while the wreck lies on the ground. It starts
+when the aircraft speed falls below about 20 m/s and it stops when the unit is
+removed. In a jet 4v4 battle, all five series started at the moment when the
+track speed fell to 0 to 25 m/s. [verified, 2026-10]
+
+- The payload is a count (varint), then that count of 24-byte records.
+- Record: `uint32` contact point index (2 to 70), `uint32` flags (mostly
+  `0x80000000` or 0), `double` depth (−0.01 to −1.0 m, settles near −0.01 to
+  −0.05 m on a parked aircraft), `double` that is the same in all records of
+  the packet. The last value loosely follows the vertical speed. The same
+  record can occur two times in one packet. [probable, 2026-10]
+
+**0xD041, turret target (no name).** Object kind 0, 20 bytes, every 0.5 s for
+each turret of each aircraft. [verified, 2026-10]
+
+- Field 1 (`uint16`): turret index, 0 to N−1. N agrees with the turrets of
+  the flight model: Rafale, Su-27SM, JAS 39C 1; Su-30SM2, Mirage 2000-5F,
+  Me 410 2; Tu-2, F/A-18 3.
+- Field 2 (bit): 1 while the turret tracks an air target. This was 1 in only
+  69 of 28,060 records.
+- Field 3 (3 × `float`): the world position of the tracked aircraft, 0 when
+  field 2 is 0. In all 69 records it was 4 to 98 m from another aircraft, on
+  the path behind it. It was 37 to 616 m from the sending aircraft.
+
+**0xF093, aircraft state at spawn (no name).** Object kind 11 (global 2).
+55 bytes. About 2 s after an aircraft spawns, and one time when it is parked.
+Field 1 `uint16` aircraft uid; field 2 `uint32` physics tick at 48 per second
+(tick ÷ 48 = battle time); field 3 position; field 4 quaternion (4 `float`);
+field 5 velocity (about 100 to 260 m/s at an air spawn); field 6 the spawn
+counter byte (see 0xF030); fields 7 and 8 two bits, both 1 with velocity 0.
+12 packets of this id go to object kind 4 with no fields. [verified for 1–5,
+2026-10]
+
+**0xF04F (no name).** Object kind 0, 22 packets, only propeller aircraft.
+Field 2 is the spawn counter byte of the aircraft, field 3 (`float`) the
+battle time in seconds. The aircraft track ended 2 to 12 s later in most
+cases. It is possibly a crew (pilot) loss. [unknown meaning, 2026-10]
+
+**0xF031 and 0xF13E (no names).** Object kind 0, at damage to an aircraft.
+0xF031: field 1 `uint32` part id (`0x10D0` to `0x1302`), field 2 `uint32`
+random-looking value, equal for parts sent together, two bits. 0xF13E: bit,
+`uint32` part id (same range), `float` 1.4 to 3.8, 3 × `float` small local
+offset. [unknown meaning, 2026-10]
+
+**0xF061 (no name).** Object kind 0, 8 bytes, at aircraft spawns: the spawn
+counter byte and five bits (bit 6 always 1). [unknown meaning, 2026-10]
+
+#### Units in general
+
+**0xF030, unit spawn (no name; probably the response to 0xF02F
+`UnitRequestRespawn`).** Object kind 0 or 1, 71 bytes, one per spawn.
+[verified, 2026-10]
+
+- Field 1 `float`: battle time in seconds (packet time ± 0.04 s).
+- Field 2: spawn position. It equals the first track position (0.0 m).
+- Field 3: orientation quaternion (4 `float`, |q| = 1).
+- Field 4: start velocity (about 180 m/s for an air spawn, 0 on the ground).
+- Field 5 `uint8`, two nibbles: the low nibble counts the uses of this uid
+  (+1 per spawn), the high nibble probably counts the owner's spawns.
+  [probable]
+- Field 6 bit: 1 for an aircraft that spawns in flight. Field 8 `int32`:
+  spawn point index (8 or 9 for air spawns, 2 to 7 for ground). Field 9
+  `int32`: slot at the spawn point, 0 to 6. Both are −1 for placeholder units
+  that spawn at (0, 24.6, 0). [probable]
+
+**0xF13A, part health (no name).** Object kind 1, 7 bytes. Field 2 `uint16`
+damage-model part index, field 3 `uint8` part health 0 to 255. On ships the
+value falls hit by hit (254, 251, 248 …), goes to 0, and rises again during a
+repair. On tanks only 0 occurs, at the kill, for the destroyed parts. Naval
+battles hold 79% of the 4,173 records. [probable, 2026-10]
+
+**0xF156, ship damage state (no name).** Only in naval battles, 9,946
+packets, object kind 17 (ground DVM) and 16 (aircraft DVM). One field: a bit
+stream (varint bit length, `0x11`, one byte, then a bit set). The bit set
+grows as the ship takes damage and is re-sent every 0.1 to 0.5 s. 80% of
+packets come within 1 s after a hit on the same unit. [probable, 2026-10]
+
+**0xD046 `UnitReloadGun`.** Object kind 0 or 1. Field 1 `uint16` weapon
+group, field 2 `uint16` index in the group; one packet for each weapon of the
+group at the same millisecond. Group 8 with 8 or 12 indices on jets (probably
+the countermeasure dispensers), 3/4 on attackers, 21/23/24 on tanks.
+[probable, 2026-10]
+
+**0xF0BC `UnitResponseDamageModelEvents`.** Object kind 1 (the victim),
+188 packets, 0.7 to 3.6 kB. It comes at the same millisecond as the kill
+message 0xF058. Field 1 (`uint16`) is the killer uid: equal to the
+0xF058 killer uid in 188 of 188. Field 2 is a bit stream of the victim's
+damage-model events (not decoded). [verified, 2026-10]
+
+#### Effects and world
+
+**0xD08E `PlayExplosionVisual`.** Object kind 11. Field 1 `uint32` effect
+kind, field 2 world position, field 3 `float` scale (1.0 in 97%), field 4
+unit vector of the projectile flight (0 in 3%). 8,428 distinct events (each
+event is sent two times). Kinds: 550 (5,365), 395 (1,770), 8 (879), 9 (390),
+813 (27), 455 (1). Kind 550 occurs in pairs every 0.08 s at a height of up to
+2 km, along a line upwards: flak bursts of an anti-aircraft gun. Kinds 395
+and 8 hit the ground near one point with a downward direction. The meaning of
+each kind number is not known. [verified layout, 2026-10]
+
+**0xF0DF `CustomWeatherParams`.** Object kind 11 (global 0). About 20 per
+battle: many in the first 20 s, then two every 90 s. [verified, 2026-10]
+
+- Fields 1 and 2: a varint size, then a binary DataBlock (first byte 1 =
+  `BBF_full_binary_in_stream`). Field 1 keys: `isMoon`, `serverTime`,
+  `cloudsOffsetX/Z`, `strataCloudsOffsetX/Z`, `sunDir`, `moonDir`, `wind`,
+  `sunColor`, `skyColor`, and `sunColor0Ht0..2`, `skyColorHt0..2`. Field 2
+  has `isAnimatedDay` in place of `wind`.
+- Field 3 `float`: seconds until the target state: field 1 `serverTime`
+  minus the current time (for example 94.85 − 17.17 = 77.68). It is 90 at each
+  90 s resync. Field 4 is a bit, always 0.
+
+**0xD044 (no name).** Global 3, `int32` −1, sent with each 90 s weather resync.
+**0xD11B (no name).** Global 3, one bit (0), one time per battle at 3.7 to
+4.2 s. [unknown meaning, 2026-10]
+
+**0xF0F7 / 0xF0F8 `InteractiveObject…State`.** Object kind 24. In ground
+battles the interactive object is a tank turret thrown off by an ammunition
+explosion (the create record holds `cls_turret`, `bone_turret` and the tank
+model). [verified, 2026-10]
+
+- 0xF0F8 (77 bytes, every 1 s): offset 1 `uint32` physics tick (24 per
+  second; tick ÷ 24 = battle time), offset 7 position (3 × `double`),
+  offset 31 quaternion (4 × `float`), offset 47 velocity (3 × `double`, equal
+  to the position difference), offset 71 the tick again.
+- 0xF0F7 (124 bytes, every 4 s): offset 7 tick, offset 11 position
+  (3 × `double`), offset 35 quaternion. The rest is not decoded.
+
+**0xF122 `TerraformPatchAlt` / 0xF123 `TerraformData`.** Global 0, ground
+battles. Payload: varint bit length, byte 1, varint compressed size, varint
+raw size, then a zstd frame. A 0xF122 frame holds a `uint8` row count, then
+rows of `uint16`, `uint8`, `uint8` n and n zigzag varints; this framing ends
+exactly at the raw size in 5 of 5 samples. The meaning of the row values
+(ground deformation by explosions) is not decoded. 0xF123 is sent every 90 s
+with a different inner format. [verified framing, 2026-10]
+
+#### Mission
+
+**0xF07A `MissionProgressData`.** Global 2. Field 1 `uint8` counter (+1 per
+change), field 2 `uint8` team (1 or 2, one record per team), field 3 two
+bytes (`e0 06`) and 27 `float`. In team deathmatch, float 12 is the team's
+own score and float 13 the other team's score. Both start at 100. Each fall of
+1 came 0.04 to 1.0 s after a kill message: 23 kills gave 16 + 7 falls. In
+domination and air battles all 27 floats are 0. [verified, 2026-10]
+
+**0xF07C `MissionProgressTimeData`.** Global 2. Field 1 `uint8` counter,
+field 2 = `uint8` 0x40, `uint32` 0, `float` seconds. In air duels it counts
+29, 28, 27 … before a round. [probable, 2026-10]
+
+**0xF0EC `MissionPlayHint`.** Global 2, only in the air duels (1,487). One
+field: a varint size and a binary DataBlock with `hintType`, `name`
+(`hints/duel_prepare_battle`, `hints/youre_living_battlearea`, …),
+`action` (`show`/`hide`), `shouldFadeOut`, `time`, `priority`, `isOverFade`,
+`target_marking`, `object_var_*`. [verified, 2026-10]
+
+**0xF0D7, unit map marker (no name).** Global 2, 40 bytes, re-sent every 2 s
+per unit. Only in some battles (low-rank ground battles and naval). Field 9
+`uint32` is a unit uid and field 1 is the position of that unit (within 30 m
+in 1,061 of 1,061 ground records). Field 2 is a class bit: `0x10000` light
+tank, `0x20000` medium, `0x40000` heavy, `0x100000` anti-aircraft; ships use
+`0x100`, `0x400`, `0x800`, `0x800000`. Field 6 is the team (1/2), field 5 a
+`float` 2.0 (ground) or 5.0 (ships), probably the lifetime. 127 of 178 marker
+series start within 1 s after a 0xF037 `UnitDetected` that names the same
+unit as spotted. [verified position and uid; probable meaning, 2026-10]
+
+**0xF142 `TargetDesignationMark`.** Global 2. Field 1 world position, field 2
+`uint32` 0 to 11 (meaning not known), field 3 a bit (always 1). Each mark is
+sent one time per team mate (7 copies in 8v8, 3 in 4v4, 2 in 3v3). Median
+53 m to the nearest unit. [verified layout, 2026-10]
+
+**0xD079 (no name).** Global 3, `uint32` unit uid (with `0x800` for ground
+units) and a bit (1). One per player in the first 10 to 45 s, then more
+during the battle. [unknown meaning, 2026-10]
+
+**0xF095 (no name).** Object kind 4, index 0 and 1, only in the air duels.
+Field 1 `uint8` team (1/2), field 2 `int32` 0 at round start and −1 at round
+end. **0xF097 (no name).** Object kind 5 (zone), no payload, 8 in air
+battles. [unknown meaning, 2026-10]
+
+#### Hit messages (layout as read by WrplReplayParser)
+
+The projectile key is 6 bytes: `uint16` offender object id (uid | kind « 11),
+`uint8` generation, `uint16` projectile index, `uint8` 0. In 0xF133 and 0xF117
+it is field 1 at offset 3. In 0xF0E9 it follows a 2-byte varint bit length at
+offset 5. 0xF117 adds `uint8` damage class and `float` amount. 0xF133 adds two
+bits (1 in 69% and 2%) and a `uint32` that was 0 in all 5,953. 0xF144 has three
+packed direction bytes and a fourth `uint8` with values 0x00, 0x01, 0x20,
+0x21, 0x30 (meaning not known). 0xF0BD has `uint8` barrel, `uint8` slot and
+`uint32` rounds left.
+
 ### 2.5 The clog decryptor is not part of the packet stream
 
 `WrplReplayParser` ships a separate tool, `ClogDecryptor`. It decrypts Gaijin
