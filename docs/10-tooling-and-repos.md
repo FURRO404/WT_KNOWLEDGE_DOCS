@@ -117,3 +117,16 @@ match statistics.
   offers only Fullscreen and Windowed there, and the default is Fullscreen.
 - Launcher command-line flags found in the binary include `-justupdate`,
   `-appid`, `-localversion`, `--silent`, `--lang` and `--log`.
+- Steam detection on Linux: the launcher and `linux64/aces` both read the
+  `SteamAppId` environment variable (Steam sets it on launch) and call
+  `SteamAPI_Init` from the bundled `libsteam_api.so`. The Steam install has no
+  `steam_appid.txt`, so without `SteamAppId` the init fails and the game shows
+  the Gaijin login page. With it, the game logs in with the Steam account.
+  The launcher log records the result as `"steam": {"isSteamVersion": true,
+  "isLaunchedFromSteam": <bool>, "steamAppId": <236390 or 0>}`.
+- War Thunder's Steam app id is `236390`. The `aces` binary also contains the
+  string `--nosteam` (behavior not tested).
+- Under Flatpak Steam, the native client runs in the Steam Linux Runtime
+  (soldier) container, which is started through the Flatpak portal. A
+  `gamescope ... -- %command%` launch option then does not nest the game:
+  `aces` gets the desktop's `DISPLAY`, not the gamescope Xwayland display.
