@@ -423,8 +423,11 @@ those battles never sent the afterburner value. [verified, 2026-10]
 - The RPM is not in the flight-model sync. MPI message 0xD047 (`FmwRpm`)
   carries it. [verified, 2026-10]
   - The extended object id is the ECS entity handle of the aircraft.
-  - The payload is one byte with the engine count in the high nibble, then
-    one `uint16` RPM for each engine.
+  - The payload is a nested bitstream preceded by its compressed bit length.
+    The nested stream contains consecutive `uint16` RPM values; its bit length
+    divided by 16 gives the number of values. The length prefix can occupy
+    multiple bytes, so its first byte is not an engine count. A valid RPM
+    stream has a bit length divisible by 16.
   - The RPM is in steps of about 9.55 (1 rad/s). It follows cockpit id 81
     with r = 0.97 to 1.00.
   - It comes every 3.1 s for each aircraft in a server replay, and every
@@ -512,7 +515,7 @@ air duel (14,291 blocks). [verified, 2026-10]
   between launches and 895 bits in each period that ended with a PL-12
   launch. It had 518 bits at spawn and in the one period that ended with an
   IR missile (PL-5E II) launch.
-- The 895-bit block carries a radar target. Three `float` values at bits 83,
+- In the observed 895-bit blocks, three `float` values at bits 83,
   115 and 147 (read as in the missile blocks: MSB first in each byte,
   little-endian) are a target position in world axes. Its median distance to
   the closest other aircraft was 368 m (10th percentile 26 m). Each of the 23
@@ -520,13 +523,21 @@ air duel (14,291 blocks). [verified, 2026-10]
   second before launch. That position was a median of 274 m from the
   missile's own first target estimate, about 0.8 s later. In four fresh
   jet battles, 52 of 60 radar launches gave 24 to 504 m at 0.6 to 0.9 s.
-  The other 8 missiles first locked 4 to 14 s after launch.
-- The three lengths share their first 50 bits. Bits 0–1 are `01` in all
-  blocks. The line of sight and the range of the missile's radar block were
-  not found at fixed offsets in the 895-bit block.
+  The other 8 missiles first locked 4 to 14 s after launch. These offsets have
+  not been established for every possible slot layout.
+- In the observed blocks, the three lengths shared their first 50 bits and
+  bits 0–1 were `01`. Aircraft blocks include slot presence flags and a weapon
+  ID before a present seeker state, so other slot layouts can shift the state.
+  The line of sight and the range of the missile's radar block were not found
+  at fixed offsets in the 895-bit block.
 - The opponent's aircraft in that client replay sent 518 bits almost all
   the time, also before its PL-12 launches. Its block is not reliable.
-- The 518-bit block carries the IR lock before launch:
+- The 518-bit block carries the IR lock before launch. The offsets below apply
+  when the second slot is present, as in the observed `01` headers. For a
+  first-slot state subtract one bit from each offset; for a third-slot state
+  add one bit. Read the presence flags to determine the slot before decoding;
+  a block with no present slot has no decoded state. Other slot cases still
+  need broader replay validation:
   - Bits 50–81 are a `float` battle time in seconds: the time of the last
     change out of state 0 or 2. A change between 3 and 4 keeps the time (87
     of 87), and so do 4 to 0, 3 to 0 and 0 to 4. It is −3.4·10^38 (minus the
@@ -660,12 +671,16 @@ arcade tanks and air duels, 294 MB of packet stream. [verified, 2026-10]
   ×180/32767). The turret yaw agrees with the gun direction of the camera
   message minus the hull heading: median 0.31° (n = 24,689).
 - The weapon-state list holds, for each weapon, the battle time of the last
-  shot, the time when the weapon is ready again, the rounds left for each ammo
-  type, and a byte. The low nibble of that byte is the loaded ammo type (1,288
-  of 1,289 shots). The high nibble is the selected type.
+  shot, a raw `ready` value in seconds, the rounds left for each ammo type,
+  and a byte. A present ammunition record can have `ready == 0` after a
+  positive last-shot time; the meaning and validity of that zero are not
+  established, so do not assume it is a usable ready timestamp. The low nibble
+  of the byte is the loaded ammo type (1,288 of 1,289 shots). The high nibble
+  is the selected type.
 - The aim point has four `float` values: the negative world yaw of the aim in
   degrees, the aim pitch in degrees, and two equal values, the distance to the
-  point below the aim (10,000 m or less). It is present only while a player is
+  point below the aim. Values above 10,000 m have been observed; that is not a
+  maximum. It is present only while a player is
   in the vehicle. The "player in vehicle" bit goes to 0 about 10 s after the
   kill (median, n = 52).
 - One state bit goes to 0 in 100 ms or less after the kill (66 of 70 kills).
@@ -740,8 +755,9 @@ arcade tanks and air duels, 294 MB of packet stream. [verified, 2026-10]
   battle with no aircraft has no 0xF11A.
 - Each record has a time tick in 1/48 s (0–42 ms after the packet time,
   n = 88,007).
-- The velocity is three `int16` values divided by 16, in m/s (median error
-  1.5 m/s, n = 77,641).
+- The velocity is three signed `int16` components, each multiplied by
+  `2000 / 32767`, in m/s. The earlier position-comparison error statistic was
+  calculated with the incorrect `/ 16` scale and needs to be rechecked.
 - Hit results name a missile as `index << 8 | generation`. In one battle, 15
   of 106 hit results named a 0xF11A entity.
 
@@ -1310,8 +1326,12 @@ Two client replays of custom air duels (game 2.59, 1.8 MB and 2.5 MB, header
 - **The cockpit message 0xD04A (`ReplayCockpitParams`) holds the author's
   instruments.** It occurs only in client replays, once per flight-model sync
   of the author's aircraft (for example 7,758 messages for 7,771 syncs). The
-  payload is `03 58 4A D0`, a `uint16` of unknown meaning, a `uint16` count,
-  then that many pairs of a `uint16` id and a `float` value. The set of ids
+  packet begins `03 58 4A D0` and the message payload contains a compressed
+  bit length followed by a nested bitstream. That stream holds a `uint16`
+  count, then that many pairs of a `uint16` id and a `float` value. The length
+  prefix is variable length: it occupies one byte for 0–2 parameters, two for
+  3–340, and three starting at 341. Validate that the declared nested length
+  and parameter count fit before reading the pairs. The set of ids
   changes with the aircraft. Checked against the author's track in four duels
   (r is the correlation): [verified, 2026-10]
   - 0: airspeed in m/s (r = 0.98–1.00, 0.93–0.96 of the track speed).
