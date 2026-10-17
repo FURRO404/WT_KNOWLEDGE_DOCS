@@ -21,6 +21,7 @@ Read it as a website: https://furro404.github.io/WT_KNOWLEDGE_DOCS/
 | 09 | [docs/09-heatmaps-and-coordinates.md](docs/09-heatmaps-and-coordinates.md) | Heatmaps and coordinate encoding |
 | 10 | [docs/10-tooling-and-repos.md](docs/10-tooling-and-repos.md) | The repositories and tools |
 | 11 | [docs/11-tss-tournament-api.md](docs/11-tss-tournament-api.md) | The public API of the tournament site (TSS) |
+| 12 | [docs/12-squadron-realistic-rating.md](docs/12-squadron-realistic-rating.md) | SRE personal and squadron ratings, datamine parameters, and award evidence |
 
 ## How the pieces fit
 

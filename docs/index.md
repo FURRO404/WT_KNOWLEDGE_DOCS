@@ -19,6 +19,7 @@ combat, and how the world and the units are built.
 | 09 | [Heatmaps and coordinates](09-heatmaps-and-coordinates.md) | Heatmaps and coordinate encoding |
 | 10 | [Tooling and repos](10-tooling-and-repos.md) | The repositories and tools |
 | 11 | [TSS tournament API](11-tss-tournament-api.md) | The public API of the tournament site |
+| 12 | [Squadron Realistic rating](12-squadron-realistic-rating.md) | SRE personal and squadron ratings, datamine parameters, and award evidence |
 
 ## How the pieces fit
 
@@ -29,8 +30,8 @@ on port 8111 (chapter 04) and talks to the online `char` server (chapter 05).
 
 Chapter 06 covers the combat math. Chapters 07 and 08 cover the world and the
 units that move in it, from the static datamine. Chapter 09 covers how we store
-positions and paint heatmaps. Chapter 10 lists every repository and where to
-read more.
+positions and paint heatmaps. Chapter 10 lists repositories and tools. Chapters
+11 and 12 describe the TSS tournament API and SRE personal rating research.
 
 ## Data sources, in short
 
@@ -38,6 +39,8 @@ read more.
 - Replay (`.wrpl`): the recorded state of one match.
 - Port 8111: a live, local, read-only telemetry feed while you play.
 - `char` server: the online account and inventory API.
+- SRE rating: personal and squadron `dr_era5_hist` values from the `char`
+  server; relevant rating parameters are also in the static datamine.
 
 ## Data
 

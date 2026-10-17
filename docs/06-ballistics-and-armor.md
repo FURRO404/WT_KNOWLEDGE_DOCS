@@ -1273,6 +1273,75 @@ blocks. A file saved in Protection Analysis has `version 0` and no part state.
 The `state` value is a multiple of 4096 in the files seen (0 to 61440). It
 looks like a part health value in 1/16 steps. This is an inference.
 
+Battle files also come as `version 10`. Version 10 files can hold lines
+where the 2nd and 3rd values are the same value and are not multiples of 4096
+(for example `65534, 65534` or `63150, 63150`). These lines were seen only on
+armor plates. Their meaning is not known. A possible reading is a finer
+health value (63150 / 65535 = 0.964). This is an inference.
+
+The part index is the local part id (see `03-replays.md`): the leaf blocks of
+`DamageParts` in file order, kept only when the `<model>_dm_skeleton` has that
+node. With this list, every `disabled` index in three version 10 files (a
+Challenger 2, an M1A1 HC, and a T-80U) named an `ammo_*_dm` part, and the
+damaged parts named plates, crew, tracks, and wheels. `size` was larger than
+the list (269 against 254, 216 against 170, 332 against 309). No index at or
+above the list length was seen.
+
+`disabled` holds the ammo parts that are empty. Thus the file holds the
+ammo state of the target: ammo parts in `ammoStowages` minus disabled ones.
+On a two-piece gun, shell parts and charge parts are disabled in pairs.
+The racks that are not `firstStage` empty first. In each rack, the parts
+empty from the end of the rack's list. On a carousel (`autoLoad`), the first
+slots in the list are empty. Confidence: **Confirmed** for disabled = ammo
+parts in these three files; **Inference** for the emptying order.
+
+An empty slot turns its part off: `ammo_slot_set_dm_enabled` in
+`gamecommon/unit/ammo_stowage_common.das` calls `dm_set_part_enabled` with
+false. A shot does not meet a disabled part. **Confirmed** (script read).
+
+#### How a spawn fills the racks
+
+Game script `gamecommon/unit/ammo_stowage_loading.das` and
+`ammo_stowage_setup.das`. **Confirmed** (script read) unless marked.
+
+1. Each `shells` or `charges` block of a stowage is a cluster. Each
+   `ammo_*_dm` block in it is one slot with its own `count`.
+2. The stage of a cluster: `ammoLoadedInGun`, then `firstStage` or
+   `autoLoad` (first stage), then the other clusters (second stage), then
+   `noReload`. A spawn fills only first stage and second stage.
+3. The clusters are sorted by stage, then `firstStage` before `autoLoad`,
+   then by `index` when every cluster has one. Else the cluster listed last
+   in the stowage comes first.
+4. `reverseFill` defaults to true. Then the slots of a cluster fill from the
+   last listed slot. A stowage value is the default for its clusters.
+5. With `removeLoadedAmmo`, one round goes in the breech and N - 1 go in the
+   racks. The hangar does not do this, so the hangar x-ray shows all N.
+6. Shells and charges fill independently, each with the same count: first
+   stage first, then second stage, cluster by cluster, slot by slot.
+
+Thus no limit such as "16 in the turret" is common to all tanks. Each unit
+sets its own split. Examples: the Leopard 2A6 holds 1 in the breech plus 15
+in the bustle (first stage) before the hull. The Challenger 2 holds 1 + 4
+first-stage rounds, then 36 more in the turret, before shells go in the hull.
+Its second-stage charges are all in the hull.
+
+A battle hit file of a Challenger 2 with 20 rounds left in the racks
+matched a fresh spawn fill of 21 rounds (1 in the breech) on all 100 slots.
+Files from an M1A1 HC and a T-80U did not fully match a spawn fill. Firing,
+the refill from second stage to first stage, and the carousel turn move the
+rounds. The refill logic (`ammo_stowage.das`) also balances shell types, so
+the layout in battle depends on the loadout and its history. **Inference.**
+
+`turretPos` holds one `pos:p2 = yaw, pitch` line for each turret or gun
+mount of the target, in degrees, with the main turret first. The yaw is
+relative to the hull. A positive yaw turns the turret toward the native
+-z side of the unit frame (the frame of `lPos`/`lDir`). In three battle
+files, the target's turret faced the shooter. The turret yaw and the
+bearing of the shot origin agreed to within 2.5 degrees, with the same
+sign (61.5 against 61.8, 4.6 against 3.5, 18.3 against 16.0). The gun pitch
+is positive up (inference: the values seen were small and negative, a gun
+held level). Confidence: **Confirmed** for the yaw sign in these three files.
+
 Protection Analysis loads a hit file with these rules
 (`scripts/dmviewer/protectionanalysis.nut`, `protectionanalysisoptionshandler.nut`):
 
