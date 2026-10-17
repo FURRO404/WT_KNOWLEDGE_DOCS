@@ -660,6 +660,15 @@ arcade tanks and air duels, 294 MB of packet stream. [verified, 2026-10]
 - The state uses Dagor net delta compression with 32 history slots and a
   13-bit packet number. A full state comes as plain bytes. A partial state is
   the XOR of a base state and an "rle0ki" stream.
+- A bit before the state tells if it is delta-compressed. A compressed state
+  is a block with its own length. A reader can skip a state that it cannot
+  decode, or whose base packet is missing, and still read the aim point, the
+  weapon-state list and the seeker block after it. An uncompressed state
+  comes inline, aligned to a byte, with no length. The reader must decode
+  all of it, to the end of the target-designation list, to find the next
+  field. No uncompressed state occurred in 1,014,619 0xF074 packets of 68
+  server replays. [verified for the compressed state, 2026-10; the
+  uncompressed layout is from the decompiled reader and was not seen]
 - The state holds a spawn byte, heading, pitch and roll (`int16`), the
   position, the velocity (`int16`, ×100/32767 m/s), the angular velocity
   (`int8`, ×π/127 rad/s), the two track speeds (`int8`, 0.1266 m/s per unit),
@@ -798,6 +807,13 @@ arcade tanks and air duels, 294 MB of packet stream. [verified, 2026-10]
   167. A `uid` is thus not fixed for a player. To name the vehicle of a
   `uid` at a time, take the newest unit entity with that `uid` that was
   created before that time.
+- A flight-model sync can come before the ECS creation of its aircraft. In
+  126 server and client replays, 106 aircraft had a sync before their
+  creation. The creation came 20 to 223 ms after the first such sync. No
+  sync named a `uid` between the destruction of its entity and the next
+  creation of that `uid`. A tool that finds the aircraft of a sync by `uid`
+  must keep these early syncs and give them to the next aircraft created
+  with that `uid`. [verified, 2026-10]
 - The kill check: in 261 of 261 kill records (0xF058) with a killer, field 2
   (killer vehicle) equals `unit__className` (without the `tankModels/` or
   `ships/` prefix) of the newest entity with the killer `uid` (field 4).
