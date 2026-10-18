@@ -20,8 +20,7 @@ Read it as a website: https://furro404.github.io/WT_KNOWLEDGE_DOCS/
 | 08 | [docs/08-vehicles-and-models.md](docs/08-vehicles-and-models.md) | Vehicles, models, camos, X-ray, damage model |
 | 09 | [docs/09-heatmaps-and-coordinates.md](docs/09-heatmaps-and-coordinates.md) | Heatmaps and coordinate encoding |
 | 10 | [docs/10-tooling-and-repos.md](docs/10-tooling-and-repos.md) | The repositories and tools |
-| 11 | [docs/11-tss-tournament-api.md](docs/11-tss-tournament-api.md) | The public API of the tournament site (TSS) |
-| 12 | [docs/12-squadron-realistic-rating.md](docs/12-squadron-realistic-rating.md) | SRE personal and squadron ratings, datamine parameters, and award evidence |
+| 11 | [docs/11-sre-tss-api-info.md](docs/11-sre-tss-api-info.md) | The public API of the tournament site (TSS), and the Squadron Realistic (SRE) personal and squadron ratings |
 
 ## How the pieces fit
 
@@ -33,7 +32,8 @@ on port 8111 (section 04) and talks to the online `char` server (section 05).
 Section 06 covers the combat math. Sections 07 and 08 cover the world and the
 units that move in it, from the static datamine. Section 09 covers how we store
 positions and paint heatmaps. Section 10 lists every repository and where to
-read more.
+read more. Section 11 describes the TSS tournament API and the SRE squadron
+rating.
 
 ## Data sources, in short
 

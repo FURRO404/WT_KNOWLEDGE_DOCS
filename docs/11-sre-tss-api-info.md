@@ -1,18 +1,32 @@
-# TSS tournament site API
+# 11 — TSS tournament API and Squadron Realistic rating
 
-This document describes the public data API of the War Thunder Tournament
-Service System (TSS), `https://tss.warthunder.com`. The source is empirical
-research against the live site on 2026-09-24 (about 70 requests, no login)
-and a read of the site JavaScript (`static-tss.warthunder.com/js/script.js?v=113`).
+> Initial research: FURRO404, TSS API capture and squadron rating decode. https://github.com/FURRO404
+> Contributors: War-Thunder-Datamine by gszabi99 (the `clanDuel` settings).
+
+This document has two parts:
+
+- Sections 1–8: the public data API of the War Thunder Tournament Service
+  System (TSS), `https://tss.warthunder.com`, and the tournament replay page
+  and CDN.
+- Section 9: the rating of Squadron Realistic Battles (SRE, also called SQB),
+  the squadron roster and ratings from the `char` server, and the datamined
+  rating settings.
+
+The TSS source is empirical research against the live site on 2026-09-24
+(about 70 requests, no login) and a read of the site JavaScript
+(`static-tss.warthunder.com/js/script.js?v=113`).
 
 Each fact carries a marker:
 - **[verified]**: seen in a live reply.
 - **[js]**: read from the site JavaScript, not seen in a live reply.
+- **[datamine]**: a value in the unpacked game files.
 - **[inferred]**: a conclusion that was not tested.
 
 For the replay and session ids that TSS links to, see
 [03-replays.md](03-replays.md). For vehicle ids and the economic rank, see
-[08-vehicles-and-models.md](08-vehicles-and-models.md).
+[08-vehicles-and-models.md](08-vehicles-and-models.md). For the `char` server
+transport and the BLK reply format, see
+[05-char-server-api.md](05-char-server-api.md).
 
 ---
 
@@ -74,7 +88,8 @@ cluster parameter changes nothing. [verified]
 - `teamSize`: 1, 2, 3, 4, 5 and 8 were seen. `minTeamSize`–`maxTeamSize` is the
   roster size. [verified]
 - `rating_a`–`rating_b` is a gate on the player PvP rating, the same scale as
-  the `pvp_ratio` that `infoTeam` returns. `0`–`100000` means no gate. The
+  the `pvp_ratio` that `infoTeam` returns. This TSS rating is not the SRE
+  rating (section 9.1). `0`–`100000` means no gate. The
   "Division" events use caps such as `0`–`1215` or `0`–`1300`. The site filters
   the list against the viewer rating in the browser. [verified values, js filter]
 - `cluster` was "EU" on every row, also for events that start at times for
@@ -194,8 +209,8 @@ timeInviteGroup}`, `allRewards` and `missions`. [verified]
 [verified]
 
 ```json
-{"idTeam":"1258945","teamName":"NSTLK","teamCaptainID":"143545842",
- "nickCaptain":"CrossGlitch_","coutnryFlag":"ru","iconTeam":false,"numberMember":3}
+{"idTeam":"<team id>","teamName":"<team name>","teamCaptainID":"<captain uid>",
+ "nickCaptain":"<captain nick>","coutnryFlag":"ru","iconTeam":false,"numberMember":3}
 ```
 
 - **Confirmed** means that the captain confirmed the roster. The confirm
@@ -379,3 +394,101 @@ that shows only after login. Its API paths (from the page code):
   use list `status` "0" as the sign of the end.
 - Whether a `check_in` "1" tournament exists, and how its window behaves.
 - The rate limits of the site.
+
+---
+
+## 9. Squadron Realistic Battles rating
+
+This section covers the rating of Squadron Realistic Battles (SRE, also called
+SQB): the `char` server calls that give the squadron data, the squadron rating
+formula, and the datamined settings.
+
+### 9.1 `cln_clan_get`: roster and ratings
+
+- `cln_clan_get` is a `GET /json` read (see
+  [05-char-server-api.md](05-char-server-api.md)). Send the header
+  `clanId: <id>` or `clanName: <name>`. [verified]
+- The answer can be wrapped in a block with a single key. Unwrap it until
+  `member_ratings` is present. [verified]
+- `members` holds the roster. `member_ratings` holds the ratings of each
+  member. `astat` holds the ratings of the squadron. [verified]
+- The personal SRE rating is `member_ratings[uid].dr_era5_hist`. The squadron
+  rating is `astat.dr_era5_hist`. They are different ratings. [verified]
+- `astat` also holds `dr_era0..7_{arc,hist,sim}`, `ftime_hist`,
+  `akills_hist`, `gkills_hist`, `battles_hist`, `wins_hist`, `deaths_hist`,
+  `activity` and `clan_activity_by_periods`. [verified]
+- The TSS rating of a player (`pvp_ratio`, section 5) is also a different
+  value. Do not use it as the SRE personal rating. [verified]
+
+### 9.2 Squadron rating formula
+
+The squadron rating is the sum of the 20 best member ratings, plus the sum of
+all other member ratings divided by 20, rounded down:
+
+```
+astat.dr_era5_hist = floor( sum(top 20 member dr_era5_hist)
+                          + sum(all other member dr_era5_hist) / 20 )
+```
+
+- The values 20 and 20 are `topPlayersCountForClanRating` and
+  `otherPlayersDivisorForClanRating` in the `clanDuel` block (section 9.4).
+- The formula was checked on 6 live squadrons with 78 to 128 members. Each
+  result matched `astat.dr_era5_hist` to within the rounding. Example: top-20
+  sum 40043.6, sum of the others 163603.3, result 48223.7, `astat` 48223.
+  [verified 2026-10-18]
+
+### 9.3 Squadron leaderboard
+
+- The leaderboard action is `cln_clan_get_leaderboard` with
+  `sortField=dr_era5_hist`. A page holds 200 rows at most. [verified]
+- `sortField=dr_era5_sim` gives `BAD_REQUEST`. `sortField=dr_era5_arc` is
+  accepted, but it gives 0 for every squadron. [verified]
+
+### 9.4 Datamined `clanDuel` settings
+
+The unpacked file `char.vromfs.bin_u/config/game_settings.blkx` has a
+`clanDuel` block with these keys: [datamine]
+
+| Key | Value |
+|---|---:|
+| `useSingleEra` | `true` |
+| `fastGrowthLimit` | 1500 |
+| `tier1Limit` | 2100 |
+| `tier2Limit` | 2400 |
+| `tier1EloK` | 32 |
+| `tier2EloK` | 24 |
+| `tier3EloK` | 16 |
+| `topPlayersCountForClanRating` | 20 |
+| `otherPlayersDivisorForClanRating` | 20.0 |
+| `periodicDiminish1Multiplier` | 0.9 |
+| `periodicDiminish1PeriodDays` | 7 |
+| `periodicDiminish2Multiplier` | 0.8 |
+| `periodicDiminish2PeriodDays` | 7 |
+| `periodicDiminish3Multiplier` | 0.5 |
+| `periodicDiminish3PeriodDays` | 7 |
+| `reward/firstRewardDayUnixTime` | 1402927200 |
+| `reward/rewardPeriodDays` | 14 |
+| `reward/topPlayersRewarded` | 20 |
+| `reward/{arcade,historical,simulation}/era5/place1Gold` | 10000 |
+| `reward/{arcade,historical,simulation}/era5/place2Gold` | 5000 |
+| `reward/{arcade,historical,simulation}/era5/place3Gold` | 2500 |
+| `battle_royale_small/superiorityBattlesThreshold` | 20 |
+| `battle_royale_small_rb/superiorityBattlesThreshold` | 20 |
+
+- `fastGrowthLimit` 1500 suggests that a different rule applies below 1500
+  points. [inferred]
+
+### 9.5 Personal awards
+
+Players reported these approximate awards per match. They are not verified.
+[reported, unverified]
+
+| Player points | Win | Loss |
+|---:|---:|---:|
+| 0–800 | about +32 | about −1 |
+| 1500 | about +16 | about −16 |
+| 1850 | about +4 | about −28 |
+| 2000 and above | about +1 | about −31 to −32 |
+
+The calculation of a personal award is not known. The effect of the
+`periodicDiminish*` keys is not known.

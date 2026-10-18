@@ -36,6 +36,10 @@ names the section that covers the term in full.
   `cln_buy_resource`. See [05](05-char-server-api.md).
 - **JWT** — the JSON Web Token that authenticates a `char` request. See
   [05](05-char-server-api.md).
+- **TSS** — the Tournament Service System, the tournament site
+  `tss.warthunder.com`. See [11](11-sre-tss-api-info.md).
+- **SRE / SQB** — Squadron Realistic Battles and its rating. See
+  [11](11-sre-tss-api-info.md).
 
 ## Combat math
 

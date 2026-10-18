@@ -549,7 +549,7 @@ Example: `us_m47_patton_II` has `economicRankHistorical` 19 (BR 7.3).
   [verified, 2.58]
 - The vehicle ids of the TSS tournament site are the same unit ids. All 245
   ids in six sampled tournaments were in `wpcost.blk`. See
-  [11-tss-tournament-api.md](11-tss-tournament-api.md). [verified, 2.58]
+  [11-sre-tss-api-info.md](11-sre-tss-api-info.md). [verified, 2.58]
 - `wpcost.blk` holds only the BR of its patch. For a BR at an earlier date, read
   the `char.vromfs.bin` of that patch.
 

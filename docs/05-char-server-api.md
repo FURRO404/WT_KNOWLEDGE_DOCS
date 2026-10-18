@@ -229,10 +229,29 @@ The read path supplies the data for other screens of the client:
 
 * The public profile of a player: nick, clan, exp, an `unlocks` dict, and
   stats.
+* The owned skins and decals of a player. `ano_get_bin` with the target id in
+  the `userId` header answers with a FAT block of about 470 KB. Send one id
+  header only. Both `userId` and `userid` together give `BAD_USERID`. [verified]
+  The block has these keys:
+  * `resourcesInfo.core`: every owned resource, as `{exteriorInfoParams}`.
+    A skin has the key `<unit>/<skin>` (example `fr_leclerc_azur/esp_market`).
+    A decal has a key that ends in `_decal` or has no slash. One account held
+    1315 entries, 312 of them skins.
+  * `hangar.<unit>.lastSkin`: the skin last selected on that unit.
+  * `decals.<unit>.<name>` and `attachables.<unit>.<name>`: the applied
+    camouflage settings, the placed decals and the mounted decorations.
+  * Also `weapons`, `modifications`, `crews`, `weaponPresets`.
+  `ano_get_wishlist_json` (`userId` header) gives the public wishlist as JSON.
+  `cln_get_showcases`, `cln_get_users_terse_info`, `cln_get_short_user_info_jwt`
+  and `cln_get_partner_executed_unlocks` answer
+  `ACCESS_DENIED_FOR_OTHER_PROFILES` for a foreign id. [verified]
 * The price and localisation table (about 20 MB) and the entitlement prices.
 * The meta block (BBF3).
-* Clan info and the member roster.
-* Leaderboard pages. A squadron leaderboard page holds 200 rows at most.
+* Clan info and the member roster (`cln_clan_get`). For the squadron roster
+  and the SRE rating fields, see
+  [11-sre-tss-api-info.md](11-sre-tss-api-info.md) section 9.
+* Leaderboard pages. For the squadron leaderboard, see
+  [11-sre-tss-api-info.md](11-sre-tss-api-info.md) section 9.3.
 * News.
 
 ### 4.3 Server-side rules for writes
