@@ -340,6 +340,23 @@ these keys:
 `skin/ger_camo_lederbraun` (10153 pairs). These rules named all 312 skins and
 all but one of 900 decals of the account above. [verified]
 
+**Stock and special decals.** Most owned decals are stock: every player can get
+them. A decal or decoration is stock when its definition
+(`char.vromfs.bin` `config/decals.blk` or `attachable.blk`, plus
+`regional.vromfs.bin` `config/decals_ext.blk`) has `costGold > 0`, or when its
+`unlock` (a string or a list) names an entry in `config/unlocks.blk`
+`unlockable[]` whose `mode.type` is a play-progress counter:
+
+    missionsWonScore missionsPlayedScore missionsWon killedPlayersScore
+    killedGroundScore burnedUnitsScore totalMissionScore awardDamage
+    amountDamagesZone char_aircrafts_in_era char_login_time_range
+
+`char_login_time_range` grants the 160 `common/numbers` decals at login. The
+other decals (`costGold -1` and no progress unlock) come from events, packs,
+tournaments, partners or the Marketplace. Of one account's 900 decals, 607 were
+stock. Of its 98 decorations, 24 were stock. `unlocks.blk` `default.unlock` (51
+ids) holds no decals. [verified]
+
 **Vehicle of a workshop skin.** `aces.vromfs.bin` `config/skins_market.blk` is
 keyed by unit. Each block (a list when the unit has several) has a
 `marketplaceItemdefId`. The client reads this file to list Marketplace skins
