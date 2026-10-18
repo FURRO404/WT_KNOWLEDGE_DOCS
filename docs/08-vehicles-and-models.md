@@ -319,7 +319,9 @@ slot names the default. The `--only air` option wires aircraft and helis.
 Downloadable skins are not in any pack. Two caches hold them:
 `cache/contentUGC/` (marketplace, for example Maus X-1) and `cache/content/`
 (official downloadable camos, for example jet unlockables). Both hold
-content-addressed DDSx blobs with no name manifest. The cached-skin recovery
+content-addressed DDSx blobs with no name manifest. The vehicle of a
+Marketplace skin is in `aces.vromfs.bin` `config/skins_market.blk`; see
+[05 section 4.5](05-char-server-api.md#45-player-cosmetics-and-awards). The cached-skin recovery
 step correlates each blob against each aircraft default diffuse by edge-map
 cross-correlation, then writes a `cached<N>` repaint. UGC repaints carry
 alpha = 0 everywhere, so the overlay blend disables itself on them.

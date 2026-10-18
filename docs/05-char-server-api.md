@@ -229,22 +229,15 @@ The read path supplies the data for other screens of the client:
 
 * The public profile of a player: nick, clan, exp, an `unlocks` dict, and
   stats.
-* The owned skins and decals of a player. `ano_get_bin` with the target id in
-  the `userId` header answers with a FAT block of about 470 KB. Send one id
-  header only. Both `userId` and `userid` together give `BAD_USERID`. [verified]
-  The block has these keys:
-  * `resourcesInfo.core`: every owned resource, as `{exteriorInfoParams}`.
-    A skin has the key `<unit>/<skin>` (example `fr_leclerc_azur/esp_market`).
-    A decal has a key that ends in `_decal` or has no slash. One account held
-    1315 entries, 312 of them skins.
-  * `hangar.<unit>.lastSkin`: the skin last selected on that unit.
-  * `decals.<unit>.<name>` and `attachables.<unit>.<name>`: the applied
-    camouflage settings, the placed decals and the mounted decorations.
-  * Also `weapons`, `modifications`, `crews`, `weaponPresets`.
-  `ano_get_wishlist_json` (`userId` header) gives the public wishlist as JSON.
-  `cln_get_showcases`, `cln_get_users_terse_info`, `cln_get_short_user_info_jwt`
-  and `cln_get_partner_executed_unlocks` answer
-  `ACCESS_DENIED_FOR_OTHER_PROFILES` for a foreign id. [verified]
+* The owned skins, decals and decorations of a player, and the skin last
+  selected on each vehicle: `ano_get_bin`. See section 4.5.
+* The public wishlist of a player: `ano_get_wishlist_json`, with the target id
+  in the `userId` header. The answer is JSON:
+  `{"userId", "units": [{"unit", "comment", "time"}]}`. [verified]
+* Actions that refuse a foreign id with `ACCESS_DENIED_FOR_OTHER_PROFILES`:
+  `cln_get_showcases`, `cln_get_users_terse_info`,
+  `cln_get_short_user_info_jwt`, `cln_get_partner_executed_unlocks`.
+  [verified]
 * The price and localisation table (about 20 MB) and the entitlement prices.
 * The meta block (BBF3).
 * Clan info and the member roster (`cln_clan_get`). For the squadron roster
@@ -288,3 +281,107 @@ Inventory codes:
 Auth codes (from the JSON error body):
 
     TOKEN_EXPIRED · INVALID_TOKEN
+
+### 4.5 Player cosmetics and awards
+
+Two public reads take the target id in the `userId` header and need only a
+service-account JWT. Send one id header only. With both `userId` and `userid`
+the server answers `BAD_USERID`. [verified]
+
+**Awards: `ano_get_public_userstat`.** The `unlocks` dict holds every award as
+`{type, stage?}`. One account held 750 entries:
+
+    achievement 434 · challenge 156 · medal 91 · trophy_steam 69
+
+`titles.name` lists the earned titles (a bare string when there is one), and
+`title` is the title in use. `closedUnlocks` and `classinessAwards` were empty.
+The profile holds no skins or decals. Unlock ids such as `ch_skins` or
+`decal_applied` record an action, not an item. [verified]
+
+**Cosmetics: `ano_get_bin`.** The answer is a FAT block of about 470 KB with
+these keys:
+
+    serverTime registerTime expiredTimeCorrection clanId clanMemberRole
+    clanType clanTag clanName hangar weapons modifications crews decals
+    attachables unitsExtraData resourcesInfo weaponPresets
+
+* `resourcesInfo.core`: every owned resource, as `{exteriorInfoParams}`
+  (values 1, 8 and 32 seen; meaning not known). A stock skin is
+  `<unit>/<skin>`, for example `fr_leclerc_azur/esp_market`. A bare key is a
+  decal or a decoration. A workshop (UGC) skin is a bare UUID of the form
+  `xxxxf000-5a1e-406b-b033-52c0dfa43067`. One account held 1315 entries:
+  312 skins, 900 decals, 98 decorations, 5 UUIDs. [verified]
+* `hangar.<unit>.lastSkin`: the skin last selected on that unit. A change in
+  the hangar shows in the next read within seconds. The `hangar` block held
+  only 53 units of that account, with per-unit state (last ammo, last weapon,
+  repairs, battle count). 20 of them had no `lastSkin`. Probably the field is
+  left out for the standard skin. [verified; the reason is inferred]
+* `decals.<unit>.<skin>` and `attachables.<unit>.<skin>`: the decal layout and
+  mounted decorations per skin. These blocks hold an entry for every workshop
+  skin that was opened in the hangar, owned or not. Do not use them to find
+  ownership or the vehicle of a workshop skin. [verified]
+* A Marketplace skin that is still a tradable item stays in the Gaijin
+  inventory. It is not in `resourcesInfo`, and only the owner's own token can
+  read the inventory. [inferred]
+
+**Names.** All from the game files:
+
+| Item | Lang key | Source |
+|---|---|---|
+| Stock skin | `<unit>/<skin>` | `lang/unlocks_skins.csv`, `regional_skins.csv` |
+| Stock skin, no own row | the key that `skins_localization.blk` gives | `aces.vromfs.bin` `config/` |
+| Stock skin, last fallback | `skin/<skin>` | `lang/unlocks_skins.csv` |
+| Standard skin | `default_skin_loc` | `lang/unlocks_skins.csv` |
+| Decal | `decals/<id>` | `lang/unlocks_decals.csv`, `regional_decals.csv` |
+| Decoration | `attachables/<id>` | `lang/unlocks_attachables.csv` |
+| Workshop skin | none | item definition name (section 4.6) |
+
+`skins_localization.blk` maps pairs such as `germ_leopard_2a6/lederbraun` to
+`skin/ger_camo_lederbraun` (10153 pairs). These rules named all 312 skins and
+all but one of 900 decals of the account above. [verified]
+
+**Vehicle of a workshop skin.** `aces.vromfs.bin` `config/skins_market.blk` is
+keyed by unit. Each block (a list when the unit has several) has a
+`marketplaceItemdefId`. The client reads this file to list Marketplace skins
+per vehicle. Join it with the item definition that has the UUID as its
+`resource` (section 4.6). This mapped all 5 owned workshop skins of the account
+above. A few itemdefs are listed for more than one unit. [verified]
+
+### 4.6 Marketplace and inventory reads
+
+These services are not the `char` server, but they take the same JWT.
+
+**Item definitions.** `POST https://inventory-proxy-01.gaijin.net/char` with
+the headers `action: GetItemDefsClient`, `token: <JWT>`, `appid: 1067` and a
+JSON body `{"itemdefids": "<id>,<id>", "language": "english"}`. The ids are a
+comma string. A JSON array gives `!ERROR:INVENTORY_INVALID_PARAMETERS`. The
+answer is `response.itemdef_json`, about 2.7 MB with 2470 definitions, and it
+seems to hold the whole client catalog whatever ids are sent. [verified]
+Fields used:
+
+    itemdefid  name  marketable  market_hash_name  tags  icon_url
+    meta = resourceType:t="skin"; resource:t="<uuid or resource id>"
+
+**Market search.** `POST https://market-proxy.gaijin.net/web` as a form:
+
+    action=cln_market_search  token=<JWT>  skip  count (100 works)
+    text  language=en_US  options=any_sell_orders  appid_filter=1067
+
+Without `token` the answer is `TOKEN_REQUIRED`. Each asset has `hash_name`,
+`name`, `price`, `depth` and `tags` (`type:skin|decal|attachable|chest|key|…`).
+The full War Thunder listing was 2829 items over 29 pages. [verified]
+
+**Hash name forms.**
+
+    ugcitem_<itemdefid>        workshop skins
+    id<itemdefid>_<resource>   decals and decorations, e.g. id300016_direct_hit_decal
+    <display name>             older items and vehicles
+
+The resource id in the second form is the same id as in `resourcesInfo.core`.
+Stock, pack, event and esports skins are not Marketplace items. Of one
+account's 1315 resources, 16 had a listing. [verified]
+
+**Listing page.** `https://trade.gaijin.net/market/1067/<hash_name>`, from the
+site's route `market/:app_id/:item_hash_name`. `/?a=<app>&n=<hash>` redirects
+there. [verified from the site bundle]
+

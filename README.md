@@ -14,7 +14,7 @@ Read it as a website: https://furro404.github.io/WT_KNOWLEDGE_DOCS/
 | 02 | [docs/02-file-formats.md](docs/02-file-formats.md) | VROMFS, BLK/DataBlock, assets, the datamine |
 | 03 | [docs/03-replays.md](docs/03-replays.md) | The `.wrpl` replay format and parsers |
 | 04 | [docs/04-localhost-8111-api.md](docs/04-localhost-8111-api.md) | The local web API on port 8111 |
-| 05 | [docs/05-char-server-api.md](docs/05-char-server-api.md) | The online `char` server API and JWT auth |
+| 05 | [docs/05-char-server-api.md](docs/05-char-server-api.md) | The online `char` server API and JWT auth, player cosmetics and awards, Marketplace reads |
 | 06 | [docs/06-ballistics-and-armor.md](docs/06-ballistics-and-armor.md) | Ballistics, penetration, armor |
 | 07 | [docs/07-terrain-and-maps.md](docs/07-terrain-and-maps.md) | Terrain decode, maps, coordinates |
 | 08 | [docs/08-vehicles-and-models.md](docs/08-vehicles-and-models.md) | Vehicles, models, camos, X-ray, damage model |
