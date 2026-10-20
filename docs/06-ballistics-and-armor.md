@@ -96,6 +96,9 @@ sea-level value. This tool covers missile flight only. It has no penetration,
 armor, De Marre, or Lanz-Odermatt code, so it does not source the rest of this
 file.
 
+For missiles, the game does not use `CxK` alone. It also applies a Mach curve
+that roughly halves the drag. See section 6.3.
+
 ## 2. Penetration model
 
 War Thunder uses two kinetic penetration paths. The shell BLK selects the path.
@@ -1721,6 +1724,9 @@ these native numbers as calibration points.
 | Per-class quality numbers | `armor_classes.blk` | Partial |
 | Composite/NERA directionality | live meow10/13/14 data | Not reverse-engineered |
 | Native equivalent-protection value | live gdb capture | Confirmed |
+| Missile launch-zone table layout | missile BLK + fit | Confirmed |
+| Missile drag `CxK * f(M)` | fit to launch-zone tables | Partial |
+| Missile end-of-flight rule | not found | Not reverse-engineered |
 
 Notes on estimated values:
 
@@ -1730,6 +1736,289 @@ Notes on estimated values:
   game-data quirk, not a transcription error.
 - The binary virtual addresses go stale on each weekly game patch. Verify the
   `aces` MD5 before any binary or debugger work.
+
+## 6. Air-to-air missile flight
+
+This section covers how the game flies an air-to-air missile. It gives the
+data location, the launch-zone tables that the game ships, and a drag law that
+reproduces those tables. Datamine 2.58.0.24.
+
+### 6.1 Where the data is
+
+Each missile is `gamedata/weapons/rocketguns/<missile>.blk`. The flight data
+is in the `rocket` block. Variants that end in `_default` repeat a missile.
+
+| Key | Unit | Meaning |
+|---|---|---|
+| `mass`, `massEnd`, `massEnd1` | kg | launch mass, mass after stage 0, mass after stage 1 |
+| `force`, `timeFire` | N, s | stage 0 thrust and burn time |
+| `force1`, `timeFire1` | N, s | stage 1 (sustainer) thrust and burn time |
+| `caliber` | m | body diameter, used for the drag area |
+| `CxK` | factor | drag factor (see 6.3) |
+| `loadFactorMax` | g | turn limit |
+| `timeLife` | s | flight time limit |
+| `guidance/guidanceAutopilot/propNavMult` | factor | proportional navigation gain |
+| `guidance/guidanceAutopilot/loftElevation` | deg | loft climb angle (radar missiles) |
+| `proximityFuse/radius` | m | proximity fuse radius |
+
+Thrust is in newtons, not kgf. An Isp check on the AIM-9L gives 213 s in N
+and 2089 s in kgf, so N is the only possible unit. Mass falls linearly
+during each burn. [verified]
+
+Keys with no known use: `dragCx` (0.015 to 0.018), `WdK` (3 values of 0.1),
+`machMax` (2.5 short range, 4.0 long range), `endSpeed`, `maxSpeed`,
+`wingAreaMult`, `CyK`, `CyMachMult`, `CxAoA` (about 20 files). The 1-D fit in
+6.3 does not need a `machMax` cap.
+
+### 6.2 Launch-zone tables (game ground truth)
+
+`rocket/guidance` holds `table0` to `table3`. The game computes them with its
+own missile model, so they are ground truth for a simulator.
+
+- Keys: `altitude`, `fighterMach` [2], `targetMach` [2], `rangeMin` [4],
+  `rangeMax` [4], `rangeMinDogfight` [4], `rangeMaxDogfight` [4], `timeMax`
+  [4], `rangeMaxAltDiff`, `rangeMaxDogfightAltDiff`, `timeMaxAltDiff`,
+  `targetMach2Mult`.
+- Usual set: `fighterMach` [0.9, 1.2], `targetMach` [0.9, 0.9]. Ground and
+  helicopter missiles use other sets, for example [0.05, 0.2] or [0.4, 0.8].
+- `targetMach[i]` goes with `fighterMach[i]`.
+- Order of the 4 values: [fighter M0.9 tail chase, M0.9 head-on, M1.2 tail
+  chase, M1.2 head-on].
+- Launch speed = `fighterMach` x local speed of sound. Launcher and target are
+  at the same `altitude`, and the target flies straight and level.
+- `rangeMax` is the distance at launch. `timeMax` is the flight time at that
+  range.
+- The tables are kinematic. They ignore the seeker lock range. Example: the
+  AIM-9M head-on `rangeMax` is 18.8 to 52 km, but `rangeBand1` is 3 km.
+- Many tables stop at the life timer. In 382 tables (318 files, with the
+  `_default` variants) at least one `timeMax` equals `timeLife`. The R-73 has `timeMax` 20.0 s at 10 and 15 km, hot and cold.
+
+The order and the speeds are verified by the fit in 6.3. A wrong order or a
+wrong speed does not fit to 1 %. [verified, fit]
+
+Straight-line check: at time `timeMax` the missile must cover
+`rangeMax - targetSpeed * timeMax` (head-on) or
+`rangeMax + targetSpeed * timeMax` (tail chase). This check tests the drag
+and thrust without the unknown end-of-flight rule.
+
+### 6.3 Drag law
+
+`config/gameparams.blk` has:
+
+```
+shellBallisticsParams { useCxiMach:b=yes; applyWingAreaMultToCxAoA:b=no;
+  maxAcceleration:r=6000; props { CxAoA:r=9 } }
+```
+
+So projectile drag uses a built-in Cx-against-Mach curve. The curve is not in
+the datamine, not in the public Dagor source, and its key names are not plain
+strings in the binary.
+
+A plain `F = 0.5 * rho * v^2 * CxK * PI * caliber^2 / 4` (the formula in
+`wt_ballistics_calc`) gives about twice the game drag. Missiles fall 24 to
+34 % short in the straight-line check.
+
+This law reproduces the tables:
+
+```
+F_drag = 0.5 * rho(h) * v^2 * CxK * f(M) * PI * caliber^2 / 4
+```
+
+`f(M)` was fitted on 388 table cases of 25 IR missiles that do not loft
+(fighter Mach 0.85 to 1.3, altitude 500 m and up). Linear between points,
+flat outside:
+
+| Mach | 0.8 | 1.2 | 1.8 | 2.5 | 3.5 |
+|---|---|---|---|---|---|
+| f(M) | 0.322 | 0.602 | 0.478 | 0.412 | 0.326 |
+
+- Range error with `f(M)`: 1.0 % RMS, 3.4 % maximum. A flat factor gives
+  2.9 % RMS at best (0.432).
+- No hot/cold split (0.95 % and 1.02 %).
+- A thrust change with altitude fits as -2.6 % per 10 km, so it is negligible.
+- Same curve, missiles outside the fit: AIM-9M and R-73 within 0.2 %. Radar
+  missiles that do not loft are 6 to 8 % short. AIM-120A/B 12.5 % short,
+  R-77 9 %, AIM-7M 9 %, MICA-EM 10 %, AIM-54A 62 %. The radar shortfall is
+  larger head-on, which points to the loft climb or a different curve.
+- Below M0.8 the curve has no data. The value is held flat.
+
+Status: **Partial**. The curve is a fit, not the game table.
+
+### 6.4 End of flight (open)
+
+The rule that sets `rangeMax` is not known. With the 6.3 law, the end state
+at `timeMax` is:
+
+- Tail chase: the missile is about 100 m/s faster than the target (AIM-9L,
+  AIM-9M, Magic 2, R-60M; 89 to 102 m/s at 1 to 10 km). The R-73 shows about
+  145 m/s.
+- Head-on: no fixed speed, Mach, IAS, or g-available limit fits. AIM-9M end
+  speed is 204, 221, 267, 350 m/s at 1, 5, 10, 15 km.
+
+### 6.5 Seekers and countermeasure data
+
+- IR seeker: `rocket/guidance/opticalSeeker`. `rangeBand0` (rear-aspect lock
+  range), `rangeBand1` (head-on lock range), `fov`, `angleMax` (gimbal),
+  `rateMax` (deg/s), `minAngleToSun`, `prolongationTimeMax`.
+- IRCCM keys: `bandMaskToReject`, `rejectionReactionTime`,
+  `signalRelRejectedTreshold`, a longer `prolongationTimeMax`. AIM-9M: 4,
+  0.02 s, 0.1, 3.0 s. Gate seekers (R-73, Magic 2) have `gateWidth` 0.75.
+- Radar seeker: `rocket/guidance/radarSeeker`. Notch keys are mostly in the
+  aircraft radar files `gamedata/sensors/<radar>.blk` (96 files): `mainBeamNotchWidth`, `zeroDopplerNotchWidth`, `mainBeamNotchMaxElevation`.
+- Flares and chaff: `gamedata/weapons/rocketguns/countermeasure_*.blk`.
+- Target IR: `config/gameplay.blk` `fmConstants` and `sensorsConstants`.
+  IR per kgf of thrust is 1.0 dry and 4.5 afterburner. The aspect factors
+  are front 0.0006, side 0.06, rear 1.0 dry, and front 0.05, side 0.12,
+  rear 1.0 with afterburner. Airframe IR factor 200.
+- Target RCS aspect factors: front 1.0, side 1.2, rear 1.0.
+- Chaff cloud (`config/gameparams.blk`): `chaffCloudMaxRadius` 80 m,
+  `chaffCloudRcsMaxRadius` 35 m, `chaffDispersionFromSpeed` 0.05,
+  `chaffDopplerSpeedWidthMult` 0.1.
+- Atmosphere: the Dagor polynomial in
+  `prog/gameLibs/gamePhys/props/atmosphere.cpp` (public source). Density is
+  clamped at 18300 m and falls as 1/h above it.
+
+The chaff and radar seeker rules are below. The flare rule is not known.
+
+**Radar seeker loading.** [verified, Linux client of 2.58.0.24, static
+read of the `radarSeeker` loader]
+
+- The missile seeker reads `groundClutter` with a default of `true`, then
+  reads its signal with the same loader as aircraft radar signals. So the
+  notch keys apply to missile seekers too.
+- Signal loader defaults: `mainBeamNotchWidth` and `zeroDopplerNotchWidth`
+  default to -2. The loader stores half of each (-1); a negative half-width
+  turns the filter off. `mainBeamNotchMaxElevation` defaults to 90 deg and
+  is stored as its sine. `absDopplerSpeed` and `mainBeamDopplerSpeed`
+  default to false. `dopplerSpeedToDistMult` and `distToDopplerSpeedMult`
+  default to 0.
+- No air-to-air missile sets a notch key. Only six SAM seekers do (I-Hawk,
+  Buk, Patriot, S-300PS, two naval). Those set `groundClutter: false` and a
+  `mainBeamNotchWidth` (60) with `mainBeamNotchMaxElevation` (3.3). So an
+  air-to-air seeker has no notch filter and simulates the ground return.
+- Reacquire windows: `distGateSearchRange` defaults to 1000 m and
+  `dopplerSpeedGateSearchRange` to 50 m/s; the loader stores half of each.
+  Active seekers in 2.58 set 5000 m and 300 m/s. Semi-active seekers set
+  50 to 150 m/s and have no range gate. `prolongationTimeMax` defaults to 1 s.
+- `config/difficulty_settings/seeker/*/seekerGroundClutter` and
+  `seekerMultipathEffect` are true on every difficulty.
+- `multipathEffect [0, 1, 60, 0]` on every seeker reads as an effect of 1
+  at 0 m that falls to 0 at 60 m: a target that hugs the ground. [guess]
+- Ground return strength (`sensorsConstants/radarFrequencyBandCrossSection1`,
+  bands 7 to 9) by grazing angle: -27 dB at 3 deg, -15 at 10, -14 at 20, -12
+  at 50, -7 at 70, -2 at 90.
+- `radarCommon`: `chaffAttenuationPower` 0.35, `chaffLineOfSight` false,
+  `mainLobeMultipath*` 0.
+
+**Radar seeker detection and ground clutter.** [read from code, Linux client
+of 2.58.0.24, static read; parts marked partly read]
+
+- Lock test: the seeker holds a target while `0.5 * S / (C + I + N) > 1`.
+  The 0.5 is a literal. S is the sum of all returns inside the range and
+  Doppler gates (aircraft and chaff alike). C is the ground return in the
+  same gates. I holds returns outside the gates and a second clutter term
+  [partly read]. N is the receiver floor. If the test fails, the seeker has
+  no target. After `prolongationTimeMax` with no target, it drops the track.
+- Return of a target: its RCS (with the aspect factors) times the antenna
+  gain on transmit and receive, over range^4.
+- Aircraft airframe RCS (signature function, radar case):
+  `aircraftRadarCrossSectionParams0 * (Length + Span) ^
+  aircraftRadarCrossSectionParams1`, times the aspect factor. The two params
+  are in no data file. Their code defaults are 0.01407 and 1.9 (vehicles:
+  6.034 and 0.6). `Length` is the flight model's top-level `Length` (default
+  10 m). `Span` is `Aerodynamics/WingPlane/Span`, on a swing wing
+  `WingPlaneSweep0/Span`, and in old-format flight models the top-level
+  `Wingspan`. Examples: F-16A 6.2 m^2, MiG-29 7.1, F-15E 10.5, Su-27 13.2.
+  The game does not use the 3D model for this.
+- Each propeller adds `0.01407 * propellerRadarCrossSectionMult *
+  ((1 + a) * b) ^ 1.9`, from two propeller fields that were not identified.
+- A unit file can set its own `radarCrossSectionAspectMultFront/Side/Rear`.
+  The F-117 sets 0.0024, 0.0028 and 0.028; drones set 1e-9. The seeker follows the first
+  return in a list sorted by strength. No other "strongest" or "nearest"
+  rule was found.
+- Receiver floor, active seeker: `txPower * txGain * G * 0.5625 *
+  receiver.rcs * bandMult / receiver.range^4`. So a target of
+  `receiver.rcs` is at the floor at `receiver.range`. A semi-active floor is
+  `0.75 * G * receiver.rcs * bandMult / receiver.range^2`.
+- Antenna: half angle `angleHalfSens / 2`, gain `exp(-k sin^2(off))` with
+  `k = ln 2 / sin^2(half angle)`, never below
+  `10^(sideLobesSensitivity / 10)`.
+- Ground clutter is on when the seeker's `groundClutter` (default true), the
+  difficulty flag `seekerGroundClutter` and the transmitter are all on. The
+  ground is a flat plane at the terrain height under the radar. There is no
+  terrain ray trace in this sum.
+- The clutter sum runs over ground cells. Each cell counts with
+  back-scatter(grazing angle) x antenna gain x cell area / R^4 (a 1/R^3
+  range integral) x the overlap of the cell's Doppler and range with the
+  gates. A cell's Doppler is the radar's own speed toward the cell, so the
+  ground spans `[-|v|, +|v|]`. When the Doppler gate is outside that span,
+  the sum stops at once. The back-scatter table is linear in power against
+  `sin(grazing angle)`, with the end values held outside the table.
+  `monostaticRadarBackScatteringMult` and `bistaticRadarBackScatteringMult`
+  are 1. An attenuation term inside the cell sum was not recovered.
+- Gate widths in the clutter code are `max(width, refWidth)`. Active
+  air-to-air seekers: Doppler 80 m/s, range 1200 m. Semi-active seekers have
+  no range gate, so the ground at every range counts.
+- The "notch" follows from this rule. A target that flies across the line of
+  sight has the Doppler of the ground near it. The ground in the gates then
+  returns 10^3 to 10^6 times more than a fighter. With a range gate, the only
+  ground in the gate is at the target's range. So the notch works only when
+  that ground is near the beam: a low target, or a long range at a shallow
+  look-down angle.
+- `targetSizeToBeamWidthMax` (default 1000) limits the angle spread of the
+  returns in the gate to `2 * main-lobe half angle * value`. At the default
+  the check never acts.
+- Not recovered: track loss timing beyond `prolongationTimeMax`, the
+  reacquire search, `multipathEffect`, and the IR seeker.
+
+**Chaff cloud.** [read from code, same client]
+
+- Cloud radius: `chaffCloudMaxRadius * (1 - e^(-chaffDispersionFromSpeed *
+  v)) * (1 - e^(-chaffDispersionFromAirViscosity / rho))`. v is the cloud's
+  speed and rho the air density. The radius only grows, toward this value,
+  with a time constant of `chaffDispersionSpeedFromAirViscosity * rho`
+  seconds (about 0.02 s). With 80, 0.05 and 1: a release at 250 m/s gives
+  about 45 m at sea level and about 73 m at 10 km.
+- Cloud RCS: `max(base, min(radius, chaffCloudRcsMaxRadius)^2)` times the
+  charge's multipliers (`multiplier0`, `profile`) [partly read]. With 35 m,
+  that is up to 1225 m^2 before the multipliers.
+- The cloud is one more return in the seeker's list, with its own range and
+  Doppler. The cloud slows fast, so its Doppler leaves a hot target's gate.
+  Chaff alone does little against a target that flies at the missile; in a
+  notch the target and the cloud share the ground's Doppler, and the cloud
+  takes the seeker.
+- How `chaffAttenuationPower` and `chaffDopplerSpeedWidthMult` act was not
+  traced.
+
+**Notch and reacquire in server replays.** [fitted, 5 jet battles, 2026-10]
+Active radar missiles, seeker track state from the replay seeker block,
+target matched by the seeker line of sight:
+
+- Share of 0.5 s windows that end in a lost lock, by the target's own speed
+  along the line of sight: below 40 m/s looking down 15 to 35%, 40 m/s and
+  above about 2%. Looking up, near 0 at every speed. 40 m/s is twice
+  `dopplerSpeed.width` (20 on every active seeker).
+- In that band, the loss rises with range (9% at 1.5 to 4 km, 81% at 8 to
+  15 km) and was 0 at 0 to 4 deg look-down. When the ground at the target's
+  slant range is inside the seeker beam (`angleHalfSens`), the rate is 50%;
+  when it is outside, 9%. A target closer than the missile's own height has
+  no ground in the range gate.
+- After a mid-flight loss, 9 of 12 missiles took the lock back, 8 of them
+  in 0.6 to 6 s, most often when the line-of-sight speed rose above 50 m/s.
+  One took 14 s. So the seeker searches; it does not give up.
+- Only 14 mid-flight losses were found. 6 of them were at high line-of-sight
+  speed and have another cause.
+- Notch spells (track kept while the speed is under 40 m/s, looking down,
+  ground near the beam, range above 1.5 km): 21 spells, 7 ended in a lost
+  lock and 14 kept it. So the notch geometry alone often fails. Every loss
+  looked down (more than 5 deg); 5 of 7 were past 5.6 km with the ground
+  inside 1.3 beam half-angles; no loss came in under 0.4 s. All 6 spells
+  that looked up kept the lock. Most kept spells were under 7 km. This fits
+  a ground return in the range cell that grows with range while the target
+  return does not.
+- Chaff: the replays hold each chaff charge (life 15 or 20 s) with its owner
+  aircraft. The target released chaff in 16 of the 21 spells, in lost and in
+  kept spells alike, so this data cannot show how much chaff adds.
 
 ## Aircraft note
 
