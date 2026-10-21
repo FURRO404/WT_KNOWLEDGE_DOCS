@@ -16,11 +16,13 @@ Read it as a website: https://furro404.github.io/WT_KNOWLEDGE_DOCS/
 | 04 | [docs/04-localhost-8111-api.md](docs/04-localhost-8111-api.md) | The local web API on port 8111 |
 | 05 | [docs/05-char-server-api.md](docs/05-char-server-api.md) | The online `char` server API and JWT auth, player cosmetics and awards, Marketplace reads |
 | 06 | [docs/06-ballistics-and-armor.md](docs/06-ballistics-and-armor.md) | Ballistics, penetration, armor |
-| 07 | [docs/07-terrain-and-maps.md](docs/07-terrain-and-maps.md) | Terrain decode, maps, coordinates |
+| 07 | [docs/07-terrain-and-maps.md](docs/07-terrain-and-maps.md) | Terrain decode, props, terrain color, the level catalog |
 | 08 | [docs/08-vehicles-and-models.md](docs/08-vehicles-and-models.md) | Vehicles, models, camos, X-ray, damage model |
-| 09 | [docs/09-heatmaps-and-coordinates.md](docs/09-heatmaps-and-coordinates.md) | Heatmaps and coordinate encoding |
+| 09 | [docs/09-coordinates-and-map-transforms.md](docs/09-coordinates-and-map-transforms.md) | World axes, level extents, world to map transform, trajectory codec |
 | 10 | [docs/10-tooling-and-repos.md](docs/10-tooling-and-repos.md) | The repositories and tools |
 | 11 | [docs/11-sre-tss-api-info.md](docs/11-sre-tss-api-info.md) | The public API of the tournament site (TSS), and the Squadron Realistic (SRE) personal and squadron ratings |
+| 12 | [docs/12-game-client-and-launcher.md](docs/12-game-client-and-launcher.md) | Native Linux client windows, focus, audio, launcher, Steam detection |
+| 13 | [docs/13-missions-and-battle-rules.md](docs/13-missions-and-battle-rules.md) | Air battle bases: health, bleed, bomb damage, rewards |
 
 ## How the pieces fit
 

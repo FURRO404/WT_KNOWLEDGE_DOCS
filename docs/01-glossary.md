@@ -15,7 +15,7 @@ names the section that covers the term in full.
 - **BBF3** — a binary BLK layout that starts with `\0BBF`. The `char` server
   answers this form. See [02](02-file-formats.md), [05](05-char-server-api.md).
 - **`.blkx`** — a JSON copy of a BLK file, used by the public datamine mirror.
-  See [09](09-heatmaps-and-coordinates.md).
+  See [02](02-file-formats.md).
 - **DDSx / dxp** — the Dagor texture format and its pack. See [02](02-file-formats.md).
 - **clog** — an encrypted log/stream form in a replay. See [03](03-replays.md).
 - **datamine** — the game files unpacked to a folder tree. The local copy is the

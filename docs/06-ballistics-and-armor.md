@@ -963,32 +963,7 @@ Confidence: **Confirmed** for the data. **Partial** for the runtime use. The
 code that picks the fragment class and that converts the mass to TNT
 equivalent is not traced.
 
-### 3.3b Tandem ATGM precharge (live-checked)
-
-A rocket keeps its kinetic damage in a top-level `kineticDamage` block, not in
-`damage.kinetic`. A tandem warhead sets `kineticDamage.damageType =
-tandemPrecharge` and gives the rocket body an `armorpower` of 50 mm (a single
-charge has about 5 mm and no damage type). Example, 127 mm ZT3A2 against the
-single-charge ZT3A1: kinetic 50 vs 5 mm, `fuseDelayDist` 0.4 vs 0.05 m,
-`explodeTreshold` 0.01 vs 0.1, jet `armorPower` 1000 vs 650 mm.
-
-- The rocket body flies first as an ordinary kinetic record. Live (9M119M1):
-  every hit logged a first record with 49.86 to 50.40 mm of pen (50 mm with
-  the arrival spread). Its charge is nominal × armor quality / cos with the
-  tandem damage type (live 41.03, 34.02, 71.08 on CHA plates of quality 0.94;
-  an ERA block of quality 1.1 at cos 0.15 charged 36.2).
-- Armor classes carry `tandemPrechargeArmorQuality` (most explosive ERA 0.33,
-  against 2.5 to 7.5 for `cumulativeArmorQuality`; `ERA_Duplet` 2.0). A class
-  without the key charged the precharge with its plain armor quality.
-- When the body pierces a plate, the warhead (jet and body fragments) bursts
-  `fuseDelayDist` + 0.01 m past the end of that record: 0.4104 and 0.4096 m
-  on two cupola shots at cos 0.80 and 0.97. A tandem missile that pierces a
-  thin cupola therefore bursts 0.41 m inside the turret.
-- When the body stops on a plate, the warhead bursts at the plate face minus
-  the explosive offset (0.2 m), and the jet's first cone sits at that plate's
-  entry, 0.2000 m behind the burst.
-
-### 3.4b Overpressure (live-checked)
+### 3.3b Overpressure (live-checked)
 
 Every round whose projectile type has a `pressureDamage` block (HE, HEAT and
 ATGM types; damage type `pressure`) runs an overpressure stage after its
@@ -1086,6 +1061,31 @@ time (gap stage, part record, part charge, trailing air). A separate walker
 function holds the same rules but did not run in live HEAT shots. Jet hits
 reach the damage code through their own listener, not through the shell-hit
 listener.
+
+### 3.4b Tandem ATGM precharge (live-checked)
+
+A rocket keeps its kinetic damage in a top-level `kineticDamage` block, not in
+`damage.kinetic`. A tandem warhead sets `kineticDamage.damageType =
+tandemPrecharge` and gives the rocket body an `armorpower` of 50 mm (a single
+charge has about 5 mm and no damage type). Example, 127 mm ZT3A2 against the
+single-charge ZT3A1: kinetic 50 vs 5 mm, `fuseDelayDist` 0.4 vs 0.05 m,
+`explodeTreshold` 0.01 vs 0.1, jet `armorPower` 1000 vs 650 mm.
+
+- The rocket body flies first as an ordinary kinetic record. Live (9M119M1):
+  every hit logged a first record with 49.86 to 50.40 mm of pen (50 mm with
+  the arrival spread). Its charge is nominal × armor quality / cos with the
+  tandem damage type (live 41.03, 34.02, 71.08 on CHA plates of quality 0.94;
+  an ERA block of quality 1.1 at cos 0.15 charged 36.2).
+- Armor classes carry `tandemPrechargeArmorQuality` (most explosive ERA 0.33,
+  against 2.5 to 7.5 for `cumulativeArmorQuality`; `ERA_Duplet` 2.0). A class
+  without the key charged the precharge with its plain armor quality.
+- When the body pierces a plate, the warhead (jet and body fragments) bursts
+  `fuseDelayDist` + 0.01 m past the end of that record: 0.4104 and 0.4096 m
+  on two cupola shots at cos 0.80 and 0.97. A tandem missile that pierces a
+  thin cupola therefore bursts 0.41 m inside the turret.
+- When the body stops on a plate, the warhead bursts at the plate face minus
+  the explosive offset (0.2 m), and the jet's first cone sits at that plate's
+  entry, 0.2000 m behind the burst.
 
 ### 3.5 Module, crew, and ammo damage data
 
@@ -1236,6 +1236,43 @@ In the game, a blowout kills the vehicle when the part that separates the
 ammo from the crew compartment is destroyed. No unit key names that part; the
 burst must reach the crew through the geometry.
 
+#### How a spawn fills the racks
+
+Game script `gamecommon/unit/ammo_stowage_loading.das` and
+`ammo_stowage_setup.das`. **Confirmed** (script read) unless marked.
+
+1. Each `shells` or `charges` block of a stowage is a cluster. Each
+   `ammo_*_dm` block in it is one slot with its own `count`.
+2. The stage of a cluster: `ammoLoadedInGun`, then `firstStage` or
+   `autoLoad` (first stage), then the other clusters (second stage), then
+   `noReload`. A spawn fills only first stage and second stage.
+3. The clusters are sorted by stage, then `firstStage` before `autoLoad`,
+   then by `index` when every cluster has one. Else the cluster listed last
+   in the stowage comes first.
+4. `reverseFill` defaults to true. Then the slots of a cluster fill from the
+   last listed slot. A stowage value is the default for its clusters.
+5. With `removeLoadedAmmo`, one round goes in the breech and N - 1 go in the
+   racks. The hangar does not do this, so the hangar x-ray shows all N.
+6. Shells and charges fill independently, each with the same count: first
+   stage first, then second stage, cluster by cluster, slot by slot.
+
+Thus no limit such as "16 in the turret" is common to all tanks. Each unit
+sets its own split. Examples: the Leopard 2A6 holds 1 in the breech plus 15
+in the bustle (first stage) before the hull. The Challenger 2 holds 1 + 4
+first-stage rounds, then 36 more in the turret, before shells go in the hull.
+Its second-stage charges are all in the hull.
+
+A battle hit file of a Challenger 2 with 20 rounds left in the racks
+matched a fresh spawn fill of 21 rounds (1 in the breech) on all 100 slots.
+Files from an M1A1 HC and a T-80U did not fully match a spawn fill. Firing,
+the refill from second stage to first stage, and the carousel turn move the
+rounds. The refill logic (`ammo_stowage.das`) also balances shell types, so
+the layout in battle depends on the loadout and its history. **Inference.**
+
+An empty slot turns its part off: `ammo_slot_set_dm_enabled` in
+`gamecommon/unit/ammo_stowage_common.das` calls `dm_set_part_enabled` with
+false. A shot does not meet a disabled part. **Confirmed** (script read).
+
 ### 3.6 Saved hit files (`ReplayHits`)
 
 The client saves a hit as a text BLK in the `ReplayHits` folder of the game
@@ -1298,42 +1335,8 @@ empty from the end of the rack's list. On a carousel (`autoLoad`), the first
 slots in the list are empty. Confidence: **Confirmed** for disabled = ammo
 parts in these three files; **Inference** for the emptying order.
 
-An empty slot turns its part off: `ammo_slot_set_dm_enabled` in
-`gamecommon/unit/ammo_stowage_common.das` calls `dm_set_part_enabled` with
-false. A shot does not meet a disabled part. **Confirmed** (script read).
-
-#### How a spawn fills the racks
-
-Game script `gamecommon/unit/ammo_stowage_loading.das` and
-`ammo_stowage_setup.das`. **Confirmed** (script read) unless marked.
-
-1. Each `shells` or `charges` block of a stowage is a cluster. Each
-   `ammo_*_dm` block in it is one slot with its own `count`.
-2. The stage of a cluster: `ammoLoadedInGun`, then `firstStage` or
-   `autoLoad` (first stage), then the other clusters (second stage), then
-   `noReload`. A spawn fills only first stage and second stage.
-3. The clusters are sorted by stage, then `firstStage` before `autoLoad`,
-   then by `index` when every cluster has one. Else the cluster listed last
-   in the stowage comes first.
-4. `reverseFill` defaults to true. Then the slots of a cluster fill from the
-   last listed slot. A stowage value is the default for its clusters.
-5. With `removeLoadedAmmo`, one round goes in the breech and N - 1 go in the
-   racks. The hangar does not do this, so the hangar x-ray shows all N.
-6. Shells and charges fill independently, each with the same count: first
-   stage first, then second stage, cluster by cluster, slot by slot.
-
-Thus no limit such as "16 in the turret" is common to all tanks. Each unit
-sets its own split. Examples: the Leopard 2A6 holds 1 in the breech plus 15
-in the bustle (first stage) before the hull. The Challenger 2 holds 1 + 4
-first-stage rounds, then 36 more in the turret, before shells go in the hull.
-Its second-stage charges are all in the hull.
-
-A battle hit file of a Challenger 2 with 20 rounds left in the racks
-matched a fresh spawn fill of 21 rounds (1 in the breech) on all 100 slots.
-Files from an M1A1 HC and a T-80U did not fully match a spawn fill. Firing,
-the refill from second stage to first stage, and the carousel turn move the
-rounds. The refill logic (`ammo_stowage.das`) also balances shell types, so
-the layout in battle depends on the loadout and its history. **Inference.**
+The rules that fill the racks at spawn are in section 3.5, "How a spawn fills
+the racks".
 
 `turretPos` holds one `pos:p2 = yaw, pitch` line for each turret or gun
 mount of the target, in degrees, with the main turret first. The yaw is
@@ -1527,6 +1530,46 @@ composite blocks (440 mm at quality 0.75 and 520 mm at quality 0.55) also carry
 section 4.6. Do not use a flat `sqrt(genericArmorQuality)` factor for composite
 classes.
 
+### 4.5 Structural and volumetric checks (native)
+
+War Thunder does not decide penetration from a BLK scalar. The game runs a
+native per-hit 3D measurement against the collision mesh. The crosshair result
+is a native struct that War Thunder serializes to the UI each frame. The struct
+fields include:
+
+```
+isHovered, ricochetProb, penetratedArmor, realPenetration,
+armorHit, headingAngle, needAngle, sightX0/Y0/X1/Y1
+```
+
+The UI value "Equivalent protection against the specified ammo" is
+`params[src][id].generic` plus the sibling mechanism sums. The Squirrel combiner
+is:
+
+```
+penetratedArmor = max over src of (
+    generic + genericLongRod + explosiveFormedProjectile + cumulative,
+    explosion,
+    shatter )
+```
+
+`src` is `["lower","upper"]` for a penetrating result, or `["max"]` for a
+blocked result. For simple kinetic AP, APFSDS, and APCBC rounds, `generic`
+dominates and the other mechanisms are `0`.
+
+Live confirmations (read off the game client):
+
+| Value | UI result | Confirmed native field |
+|---|---|---|
+| 381 mm | possible | r8+0x214, exact |
+| 469 mm | possible | r8+0x214, exact |
+| 174 mm | possible | r8+0x214, ~3.5% off (cursor jitter) |
+| 738 mm | not possible | generic = 737.765320 |
+
+The viewer computes its own from-scratch value (collision-mesh LOS plus the
+Lanz-Odermatt and De Marre formulas plus the slope tables). The viewer targets
+these native numbers as calibration points.
+
 ### 4.6 Per-part charge and penetration carry (confirmed live)
 
 Source: per-part hit records read live from the October 2026 Linux client. The
@@ -1650,46 +1693,6 @@ hidden while it is fitted. A hidden node's `<node>_dm` part is not
 armor-tested. Many modifications use these keys, for example dozer blades,
 camouflage nets, track extensions and add-on armor kits. That the disabled
 ammo rack was an empty rack is a guess.
-
-### 4.5 Structural and volumetric checks (native)
-
-War Thunder does not decide penetration from a BLK scalar. The game runs a
-native per-hit 3D measurement against the collision mesh. The crosshair result
-is a native struct that War Thunder serializes to the UI each frame. The struct
-fields include:
-
-```
-isHovered, ricochetProb, penetratedArmor, realPenetration,
-armorHit, headingAngle, needAngle, sightX0/Y0/X1/Y1
-```
-
-The UI value "Equivalent protection against the specified ammo" is
-`params[src][id].generic` plus the sibling mechanism sums. The Squirrel combiner
-is:
-
-```
-penetratedArmor = max over src of (
-    generic + genericLongRod + explosiveFormedProjectile + cumulative,
-    explosion,
-    shatter )
-```
-
-`src` is `["lower","upper"]` for a penetrating result, or `["max"]` for a
-blocked result. For simple kinetic AP, APFSDS, and APCBC rounds, `generic`
-dominates and the other mechanisms are `0`.
-
-Live confirmations (read off the game client):
-
-| Value | UI result | Confirmed native field |
-|---|---|---|
-| 381 mm | possible | r8+0x214, exact |
-| 469 mm | possible | r8+0x214, exact |
-| 174 mm | possible | r8+0x214, ~3.5% off (cursor jitter) |
-| 738 mm | not possible | generic = 737.765320 |
-
-The viewer computes its own from-scratch value (collision-mesh LOS plus the
-Lanz-Odermatt and De Marre formulas plus the slope tables). The viewer targets
-these native numbers as calibration points.
 
 ## 5. Source and confidence summary
 
@@ -2177,14 +2180,9 @@ target matched by the seeker line of sight:
 
 ## Aircraft note
 
-Aircraft armor uses a different data model. The `DamageParts` group name is the
-armor class. The parts carry only `hp` and `genericDamageMult`. The classes
-resolve in `gamedata/flightmodels/dm/armorclasses.blk` (347 classes), not the
-tank file. A composite group holds member weights (for example
-`protected_controls = {steel: 0.3, armor5: 0.7}`). The extractor resolves a
-group to a probability-weighted `armorThickness` plus a `compositeMembers` map.
-See [08-vehicles-and-models.md](08-vehicles-and-models.md) for the geometry
-side.
+Aircraft armor uses a different data model: the `DamageParts` group name is
+the armor class. See [08-vehicles-and-models.md](08-vehicles-and-models.md)
+section 3.2.
 
 ## Repository status
 

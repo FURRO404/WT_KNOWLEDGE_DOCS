@@ -14,11 +14,13 @@ combat, and how the world and the units are built.
 | 04 | [Localhost 8111 API](04-localhost-8111-api.md) | The local web API on port 8111 |
 | 05 | [Char server API](05-char-server-api.md) | The online `char` server API and JWT auth, player cosmetics and awards, Marketplace reads |
 | 06 | [Ballistics and armor](06-ballistics-and-armor.md) | Ballistics, penetration, armor, air-to-air missile flight |
-| 07 | [Terrain and maps](07-terrain-and-maps.md) | Terrain decode, maps, coordinates |
+| 07 | [Terrain and maps](07-terrain-and-maps.md) | Terrain decode, props, terrain color, the level catalog |
 | 08 | [Vehicles and models](08-vehicles-and-models.md) | Vehicles, models, camos, X-ray, damage model, flight model data |
-| 09 | [Heatmaps and coordinates](09-heatmaps-and-coordinates.md) | Heatmaps and coordinate encoding |
+| 09 | [Coordinates and map transforms](09-coordinates-and-map-transforms.md) | World axes, level extents, world to map transform, trajectory codec |
 | 10 | [Tooling and repos](10-tooling-and-repos.md) | The repositories and tools |
 | 11 | [TSS API and SRE rating](11-sre-tss-api-info.md) | The public API of the tournament site (TSS), and the Squadron Realistic (SRE) personal and squadron ratings |
+| 12 | [Game client and launcher](12-game-client-and-launcher.md) | Native Linux client windows, focus, audio, launcher, Steam detection |
+| 13 | [Missions and battle rules](13-missions-and-battle-rules.md) | Air battle bases: health, bleed, bomb damage, rewards |
 
 ## How the pieces fit
 
@@ -28,9 +30,10 @@ packet stream (chapter 03). While a match runs, the game answers a local web API
 on port 8111 (chapter 04) and talks to the online `char` server (chapter 05).
 
 Chapter 06 covers the combat math. Chapters 07 and 08 cover the world and the
-units that move in it, from the static datamine. Chapter 09 covers how we store
-positions and paint heatmaps. Chapter 10 lists repositories and tools. Chapter
-11 describes the TSS tournament API and the SRE squadron rating.
+units that move in it, from the static datamine. Chapter 09 covers world axes and
+the change from world positions to map positions. Chapter 10 lists repositories and tools. Chapter
+11 describes the TSS tournament API and the SRE squadron rating. Chapter 12
+covers the game client and launcher. Chapter 13 covers mission rules.
 
 ## Data sources, in short
 

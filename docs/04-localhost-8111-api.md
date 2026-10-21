@@ -212,11 +212,12 @@ world position of one corner. `map_max` is the world position of the opposite
 corner. Both values are in metres.
 
 To convert a normalized object to world metres, interpolate between `map_min`
-and `map_max`:
+and `map_max`. The second value of each corner is a world `z`. `y` grows down
+and world `z` grows to the top of the picture, so `y` flips:
 
 ```
 world_x = map_min[0] + x * (map_max[0] - map_min[0])
-world_y = map_min[1] + y * (map_max[1] - map_min[1])
+world_z = map_min[1] + (1 - y) * (map_max[1] - map_min[1])
 ```
 
 The extent is not a fixed frame. Each level has its own extent. An air map is
@@ -226,8 +227,8 @@ The level BLK field `tankMapCoord0/1` in `levels/avg_berlin.blk` read the same
 pair. An air battle returned `[-65536,-65536]..[65536,65536]`. So `map_info`
 replaces the level BLK for the picture kind that the HUD shows.
 
-See [09-heatmaps-and-coordinates.md](09-heatmaps-and-coordinates.md) for the
-coordinate model that the heatmap tools use, and
+See [09-coordinates-and-map-transforms.md](09-coordinates-and-map-transforms.md) for the
+world coordinate model and the world to map transform, and
 [07-terrain-and-maps.md](07-terrain-and-maps.md) for the map picture and terrain
 extents.
 
@@ -431,5 +432,5 @@ tool needs it.
   source to 8111.
 - [07-terrain-and-maps.md](07-terrain-and-maps.md) — the map picture, the level
   extents, and the terrain that back `map.img` and `map_info`.
-- [09-heatmaps-and-coordinates.md](09-heatmaps-and-coordinates.md) — the
+- [09-coordinates-and-map-transforms.md](09-coordinates-and-map-transforms.md) — the
   coordinate model that consumes the normalized positions from `map_obj.json`.

@@ -42,6 +42,8 @@ nav:
   - 06 Ballistics and armor: 06-ballistics-and-armor.md
   - 07 Terrain and maps: 07-terrain-and-maps.md
   - 08 Vehicles and models: 08-vehicles-and-models.md
-  - 09 Heatmaps and coordinates: 09-heatmaps-and-coordinates.md
+  - 09 Coordinates and map transforms: 09-coordinates-and-map-transforms.md
   - 10 Tooling and repos: 10-tooling-and-repos.md
   - 11 TSS API and SRE rating: 11-sre-tss-api-info.md
+  - 12 Game client and launcher: 12-game-client-and-launcher.md
+  - 13 Missions and battle rules: 13-missions-and-battle-rules.md

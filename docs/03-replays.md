@@ -234,6 +234,24 @@ that the sensor detects. `WrplReplayParser`'s `PositionSync.cpp` decodes the
 same records and unpacks quantized fields with `netutils::UNPACKS<int16_t>` at a
 scale (for example `PI` for angles).
 
+**Aircraft attitude from the orientation samples.** Replay tracks give an
+aircraft's yaw, pitch and roll in radians for each position sample. In world
+axes (`x` east, `y` up, `z` north):
+
+- Nose: `f = (cos p · cos y, sin p, -cos p · sin y)`.
+- Wings-level up: `u0 = normalize((0, 1, 0) - f · f.y)`.
+- Up with bank: `up = cos r · u0 + sin r · (f × u0)`.
+
+Checks on TSS air-duel tracks:
+
+- The nose lies within 0.5 rad of the flight path in more than 80% of samples
+  above 150 m/s. The rest are high angle-of-attack moments in hard turns.
+- In every sample with more than 3 G of lift, `up` points along the lift:
+  the normal part of `acceleration + g`. The mean cosine is 0.95. With the
+  other roll sign, it is -0.07.
+
+[verified, 2026-10 data]
+
 **Sensor record fields.** Two 2.59 server replays (a 4v4 top-tier jet battle
 and a combined-arms battle) gave these results. [verified, 2026-10]
 
@@ -1496,7 +1514,7 @@ per-parser results instead.
 [wrpl-inspector](https://github.com/maxsupermanhd/wrpl-inspector)
 (Go) carves one match out of the replay parts into a `CarvedReplay`. It is the
 ingest backend behind the heatmap stats
-(see [09-heatmaps-and-coordinates.md](09-heatmaps-and-coordinates.md)). Its
+(see [09-coordinates-and-map-transforms.md](09-coordinates-and-map-transforms.md)). Its
 data model is a good summary of what a replay yields:
 
 - `Kill`: time, killer and victim (player id, model, entity index, position),
