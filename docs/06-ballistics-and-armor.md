@@ -1760,6 +1760,8 @@ is in the `rocket` block. Variants that end in `_default` repeat a missile.
 | `guidance/guidanceAutopilot/propNavMult` | factor | proportional navigation gain |
 | `guidance/guidanceAutopilot/loftElevation` | deg | loft climb angle (radar missiles) |
 | `proximityFuse/radius` | m | proximity fuse radius |
+| `proximityFuse/timeOut` | s | arm time after launch |
+| `proximityFuse/detectShells`, `shellCaliberRange` | bool, m | the fuse can also fire on a shell in that caliber range; every guided air-to-air missile has `true`, [0.08, 0.2] [guess] |
 
 Thrust is in newtons, not kgf. An Isp check on the AIM-9L gives 213 s in N
 and 2089 s in kgf, so N is the only possible unit. Mass falls linearly
@@ -1781,6 +1783,12 @@ own missile model, so they are ground truth for a simulator.
   `targetMach2Mult`.
 - Usual set: `fighterMach` [0.9, 1.2], `targetMach` [0.9, 0.9]. Ground and
   helicopter missiles use other sets, for example [0.05, 0.2] or [0.4, 0.8].
+- Not all air-to-air missiles use the usual set. Older air-to-air missiles use
+  `fighterMach` [1.2, 0.8] (all AIM-9 from B to P-4 except L/M, R-3S/R, PL-2/5,
+  Shafrir, Firestreak, R.530). The R-23 uses [0.88, 1.11] and the R-24 uses
+  [0.79, 1.12]. Some air-to-air missiles have no tables (AIM-4, AIM-7C, R-13M,
+  R.511, Rb 27, Mistral, Stinger, Igla, Verba). So a missile filter must not
+  need the usual set or a table. [read]
 - `targetMach[i]` goes with `fighterMach[i]`.
 - Order of the 4 values: [fighter M0.9 tail chase, M0.9 head-on, M1.2 tail
   chase, M1.2 head-on].
@@ -1908,7 +1916,7 @@ read of the `radarSeeker` loader]
   bands 7 to 9) by grazing angle: -27 dB at 3 deg, -15 at 10, -14 at 20, -12
   at 50, -7 at 70, -2 at 90.
 - `radarCommon`: `chaffAttenuationPower` 0.35, `chaffLineOfSight` false,
-  `mainLobeMultipath*` 0.
+  `mainLobeMultipath*` 0, `useRefWidthForTargets` false.
 
 **Radar seeker detection and ground clutter.** [read from code, Linux client
 of 2.58.0.24, static read; parts marked partly read]
@@ -1933,9 +1941,12 @@ of 2.58.0.24, static read; parts marked partly read]
 - Each propeller adds `0.01407 * propellerRadarCrossSectionMult *
   ((1 + a) * b) ^ 1.9`, from two propeller fields that were not identified.
 - A unit file can set its own `radarCrossSectionAspectMultFront/Side/Rear`.
-  The F-117 sets 0.0024, 0.0028 and 0.028; drones set 1e-9. The seeker follows the first
-  return in a list sorted by strength. No other "strongest" or "nearest"
-  rule was found.
+  The F-117 sets 0.0024, 0.0028 and 0.028; drones set 1e-9.
+- **Correction, 2026-10-20:** the sorted return list supplies the reported
+  object ID. Steering direction, range and Doppler come from signal-weighted
+  aggregate measurements. Selecting the first object's position and velocity
+  throws away those measurements. The direction is a weighted line of sight,
+  separate from weighted range; it is not a Cartesian position average.
 - Receiver floor, active seeker: `txPower * txGain * G * 0.5625 *
   receiver.rcs * bandMult / receiver.range^4`. So a target of
   `receiver.rcs` is at the floor at `receiver.range`. A semi-active floor is
@@ -1956,9 +1967,17 @@ of 2.58.0.24, static read; parts marked partly read]
   `sin(grazing angle)`, with the end values held outside the table.
   `monostaticRadarBackScatteringMult` and `bistaticRadarBackScatteringMult`
   are 1. An attenuation term inside the cell sum was not recovered.
-- Gate widths in the clutter code are `max(width, refWidth)`. Active
-  air-to-air seekers: Doppler 80 m/s, range 1200 m. Semi-active seekers have
-  no range gate, so the ground at every range counts.
+- **Gate correction, 2026-10-20:** `refWidth` is not a full-strength target
+  gate. In the non-ambiguous, zero-leakage case the main gain is the overlap
+  with the return's signal interval, divided by signal width. The gate width
+  is `max(width, min(signalWidth, refWidth))`. For an AIM-120A narrow return
+  (`signalWidthMin` 5 m/s), the gate is 20 m/s, not 80: offsets 0, 5, 10 and
+  15 m/s give main gains 1, 1, 0.5 and 0. The range gate is 300 m with minimum
+  signal width 300 m, not a 1200 m full-strength window. Broad ground cells
+  can widen their gates toward the reference widths (80 m/s, 1200 m).
+  Semi-active seekers have no range gate, so ground at every range counts.
+  `useRefWidthForTargets=false` disables the target's secondary reference
+  channel; the reference-channel term must not be added unconditionally.
 - The "notch" follows from this rule. A target that flies across the line of
   sight has the Doppler of the ground near it. The ground in the gates then
   returns 10^3 to 10^6 times more than a fighter. With a range gate, the only
@@ -1968,27 +1987,163 @@ of 2.58.0.24, static read; parts marked partly read]
 - `targetSizeToBeamWidthMax` (default 1000) limits the angle spread of the
   returns in the gate to `2 * main-lobe half angle * value`. At the default
   the check never acts.
-- Not recovered: track loss timing beyond `prolongationTimeMax`, the
-  reacquire search, `multipathEffect`, and the IR seeker.
+- Scalar gate filters [read and native-tested, 2026-10-20]: each gate keeps
+  a value and rate. For an observation after `T=dt+timeWithoutObservation`,
+  `q=min(10,48*T)`, `a=1-(1-filterAlpha)^q` and
+  `b=1-(1-filterBetta)^(q*q)`. Predict the gate with its rate, then correct
+  the value by `a*residual` and the rate by `b*residual/T`. The squared
+  exponent on beta is intentional. Measurements and resulting gate centres
+  are clamped to the signal's min/max (centres leave half a gate at each edge).
+- `distGate.accelLimit` and `dopplerSpeedGate.rateLimit` are pairs,
+  interpolated over the first second without observations, and apply after
+  `limitTimeOut`. The range check rejects when the magnitude of its rate
+  correction is at least `limit*T`; the Doppler check rejects when the new
+  rate magnitude is at least `limit`. A failure rejects the observation;
+  it does not clip a rate and accept the new target. Defaults from the loader
+  are alpha/beta 1, limits and timeout 2147440000. AIM-120A sets 0.8/0.05;
+  AIM-7M sets Doppler 0.25/0.03, limits [100,250], timeout 1 s.
+- Ground clutter cells [read, 2026-10-20]: the clutter sum for a seeker with
+  Doppler and range gates (`0x5f28a70`) multiplies each cell by the gate
+  overlap (`0x5f28350` -> `0x5f27850`). So the effective clutter window is
+  the target gate (for example 20 m/s by 300 m), not a full-strength
+  `refWidth` window (80 m/s by 1200 m). The cell weight also has an
+  `expf(-...)` factor (`0x5f2ad20..0x5f2ad5e`) that has the shape of the
+  Gaussian main-lobe gain [partly read]. The loop stops once the sum reaches
+  `0.5*S`, so it only decides the lock test. A seeker without a Doppler gate
+  uses `0x5f2bbc0` and `0x5f2bee0`.
+- Angular tracker [read, 2026-10-20, helper `0x5f22b20`, loader `0x5f20440`]:
+  the seeker keeps a unit direction `d` and an angular rate `w` (each
+  component clamped to +-10 rad/s). Each frame: `d' = normalize(d +
+  (w x d)*dt)`, residual `r = v - d'` with `v` the measured direction, and
+  `c` the cross product of `r` and `d'`. The observation is rejected if any
+  component of `c` exceeds `angleGateRate*dt`. Otherwise `d` moves toward `v`
+  by `filterAlpha` times the perpendicular part of `r`, and `w` changes by
+  `c*filterBetta/dt`. Alpha and beta are not scaled by the time without
+  observations. Code defaults: `filterAlpha` 0.85, `filterBetta` 0.2,
+  `lockAngleMax` 5 deg, `angleGateRate` off. AIM-120A and AIM-7M set
+  `angleGateRate` 30 (deg/s), so a direction jump of more than about 0.6 deg
+  in a 0.02 s frame is rejected. The antenna az/el also follows `v`, limited
+  to `rateMax` and to `angleMax` (`lockAngleMax` when locked).
+- Guidance reads the tracked direction `d` and the tracker's `w`, not the raw
+  aggregate direction (seeker output `0x5f7b648..0x5f7b6a0`). The aggregate
+  direction is only an input to the angular tracker.
+- Track mode never widens the gates [read, tracker `0x5f55860`, mode 8]. Each
+  frame the range and Doppler centres move with the missile's own motion
+  (`range -= dpos.d`, `Doppler += dvel.d`), then the angle update and the
+  lock test run. On a failed test or a filter reject, the gates coast
+  (`0x5f54820`: centre += rate*dt, clamped inside min/max) and the time
+  without observations grows. The track counts as held while that time is
+  under `prolongationTimeMax`. Gate width stays the configured `width`. The
+  gate argument at `+0x2c` is `leakMult` (default 0), not a search width.
+- Scan and reacquire [read]: `distGateSearchRange` and
+  `dopplerSpeedGateSearchRange` are used only in scan mode (mode 7). Scan
+  takes candidates in the antenna cone within half of each search range of
+  the old gate centres, sorts them by normalised squared offset and puts a
+  normal-width gate on each in turn; the first that passes the lock test
+  wins. With `guidance.reacquireTarget` false (code default, and the
+  AIM-120A), a lost track does not go to scan: the seeker keeps testing its
+  coasting gates each frame. `useTargetId` (default false) restricts
+  detection to one stored object ID; air-to-air missiles checked do not set
+  it.
+- Consequence for chaff [read rules, run in a model]: a cloud can only take a
+  track through the gates and the angle gate. A cloud released away from the
+  zero-radial-speed moment is outside the 20 m/s Doppler gate when the
+  target notches, or too far off in angle. A cloud released within about
+  1.5 s of that moment shares the target's angle, range and ground Doppler,
+  and its 245 m^2 passes the lock test while clutter buries the target, so
+  it takes the track. How the game reacquires after a loss (replays: 9 of 12
+  in 0.6 to 6 s) is not explained by these rules yet.
+- Not recovered completely: the consumers of `directionWithinMainLobe` (true)
+  and `angleFinderZoneToMainBeamWidth` (2.0) in `radarCommon`, the flag at
+  `0xafa28cd` that selects the antenna rate limit, `multipathEffect`, and the
+  IR seeker.
 
-**Chaff cloud.** [read from code, same client]
+**Chaff cloud.** [static read, with gate-function execution on 2026-10-20]
 
 - Cloud radius: `chaffCloudMaxRadius * (1 - e^(-chaffDispersionFromSpeed *
   v)) * (1 - e^(-chaffDispersionFromAirViscosity / rho))`. v is the cloud's
-  speed and rho the air density. The radius only grows, toward this value,
+  current speed and rho the air density. `cloudRadiusMult` also scales the
+  goal (default 1). The radius only grows, toward this value,
   with a time constant of `chaffDispersionSpeedFromAirViscosity * rho`
   seconds (about 0.02 s). With 80, 0.05 and 1: a release at 250 m/s gives
-  about 45 m at sea level and about 73 m at 10 km.
+  about 45 m at sea level and about 73 m at 10 km. This is a goal radius,
+  not the radius assigned at release. Update with
+  `R += (max(R, goal) - R) * (1 - exp(-dt / (0.02 * rho)))`.
 - Cloud RCS: `max(base, min(radius, chaffCloudRcsMaxRadius)^2)` times the
-  charge's multipliers (`multiplier0`, `profile`) [partly read]. With 35 m,
-  that is up to 1225 m^2 before the multipliers.
+  charge's multipliers (`multiplier0`, `profile`). The square itself is
+  confirmed: there is no division by the cap radius in this path. With 35 m,
+  that is up to 1225 m^2 before the multipliers, or 245 m^2 with multiplier
+  0.2 at full profile. Reducing this scale to fit notching is not justified.
 - The cloud is one more return in the seeker's list, with its own range and
   Doppler. The cloud slows fast, so its Doppler leaves a hot target's gate.
   Chaff alone does little against a target that flies at the missile; in a
-  notch the target and the cloud share the ground's Doppler, and the cloud
-  takes the seeker.
-- How `chaffAttenuationPower` and `chaffDopplerSpeedWidthMult` act was not
-  traced.
+  exact notch the target and a stopped cloud can share the ground's Doppler.
+  Near a notch they need not fit the same narrow target gate. Whether the
+  cloud changes guidance depends on gate overlap, aggregate measurements,
+  clutter and tracking; a single cloud is not guaranteed to take the seeker.
+- Cloud Doppler signal width is `speed * chaffDopplerSpeedWidthMult` (0.1),
+  subject to the seeker's `signalWidthMin`. The profile evaluator is a
+  piecewise linear rise/hold/fall over its four input breakpoints. The rocket
+  signature caller passes current time minus release time in seconds
+  (`0x201465d..0x20146a5`), with no lifetime division. Native profile outputs
+  for [0.05,0.1,12,15] include 0 at 0.05 s, 0.5 at 0.075 s, 1 at 1 s,
+  0.5 at 13.5 s and 0 at 15 s.
+- Chaff slowdown [non-rotating shell path, read and native-tested]: the
+  standard charge has mass 0.01 kg, caliber 0.026 m and CxK 100. With
+  `k=0.5*rho*CxK*(pi*caliber^2/4)/mass` and horizontal speed `vh`, drag
+  acceleration is `[-k*vh*vx, -k*abs(vy)*vy, -k*vh*vz]` (y is vertical).
+  Add gravity, then limit total acceleration to
+  `shellBallisticsParams.maxAcceleration=6000 m/s^2`. Position uses midpoint
+  velocity. This path does not use the Mach curve of the rotating-body path.
+  `speedViscosity` is not read in the traced rocket loader/update; its sole
+  literal string reference in this client is in unrelated movement settings.
+  It does not justify a 3/s exponential decay.
+- `chaffAttenuationPower` [read, 2026-10-20]: the `radarCommon` loader
+  (`0x5f24380..0x5f244cf`) stores it at `0xafa2a20` and `chaffLineOfSight` at
+  `0xafa2a1d`. The aggregator multiplies a return by
+  `transmission^chaffAttenuationPower` (`0x5f3089b`, `0x5f30950`) only when
+  `chaffLineOfSight` is true. The game sets it false, so the term is off.
+- Chaff release [read]: the chaff is a `rocket` with `startSpeed` 70 and
+  `useStartSpeed` true. The launch function (`0x20529b0`) adds 70 m/s along
+  the object's forward axis to the inherited velocity [inheritance and axis:
+  partly read]. One shot is one object and one cloud. `config/gameparams`
+  sets `countermeasuresSeries` 5, `countermeasuresPeriods` 0.1 and
+  `countermeasuresSeriesPeriods` 0.1 as defaults for the player options
+  (`flaresSeries` and the periods), so one press is 5 charges 0.1 s apart.
+  The radius formula uses the cloud's own speed.
+- Radius in practice [native-tested drag]: with the 6000 m/s^2 cap, a charge
+  released at 250 m/s is at about 13 m/s after 0.05 s at 1 km (27 m/s at
+  10 km). The radius stops near 33 m at sea level, 37 m at 1 km and 70 m at
+  10 km, because the speed falls before the radius reaches its goal. The RCS
+  cap of 35 m therefore applies above about 1 km.
+- Radar signature bands [read and native-tested]: the signature has ten
+  radar slots, and `multiplier%d`, `emission%d`, `addend%d` and
+  `emissionProfile%d` name the slot. The seeker builds its mask as the
+  airframe source bit (`airframeRadarCrossSectionSourcesMask` 32768) ORed
+  with its band-class index from `radarFrequencyBandCrossSection0..4` (class 1
+  is bands 7 to 9). A band-8 seeker passes 0x8001, so the chaff's
+  `multiplier0` 0.2 and its profile apply: 245 m^2 at R >= 35 m. A seeker of
+  class 0, 2 or 4 passes 0x8000/0x8002/0x8004 and sees the full 1225 m^2 with
+  no fade. The result is
+  `max(maxEmission, product(multipliers) * max(base, min(R,35)^2)) * profile +
+  maxAddend`, where `base` for a charge is about 7e-5 m^2.
+
+Audit addresses for the captured client (SHA256
+`e9138baaf46bbd865382d26d941c3339a6ba1ee65a1233790f95be99c705ba4f`):
+RCS square `0x5ff087d..0x5ff0894`; growth `0x2033cf0..0x2033e66`;
+gate overlap `0x5f27850`; gate wrapper `0x5f28350`;
+`useRefWidthForTargets` loader `0x5f24434..0x5f24465`;
+aggregate `0x5f309b0` and seeker output `0x5f5287a..0x5f529f1`.
+The earlier 2.58.0.24 addresses differ. Reproduce the gate measurements with
+[`data/chaff_gate_probe.py`](../data/chaff_gate_probe.py). Scalar tracking is
+at `0x5f53f90`, coasting at `0x5f54820`, filter loader at
+`0x5f50a19..0x5f50ba6`, shell area/CxK loader at `0x85dcd7d..0x85dce27`,
+and shell integration at `0x85de310`. Reproduce the isolated filter, drag
+and profile calls with [`data/chaff_tracking_probe.py`](../data/chaff_tracking_probe.py).
+The drag probe sets the atmosphere and the 6000 m/s^2 cap explicitly from
+the data and uses zero external force to isolate drag. These results rule out
+an immediate switch to the strongest return; they do not establish full
+agreement with observed game notch timing.
 
 **Notch and reacquire in server replays.** [fitted, 5 jet battles, 2026-10]
 Active radar missiles, seeker track state from the replay seeker block,
