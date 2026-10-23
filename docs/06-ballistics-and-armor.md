@@ -1866,6 +1866,37 @@ at `timeMax` is:
 - Head-on: no fixed speed, Mach, IAS, or g-available limit fits. AIM-9M end
   speed is 204, 221, 267, 350 m/s at 1, 5, 10, 15 km.
 
+### 6.4a Ground-launched SACLOS missiles (data location)
+
+A ground vehicle's command-guided missile is not in `weapons/rocketguns`. It
+is in `gamedata/weapons/groundmodels_weapons/<launcher>.blk`, in the `rocket`
+block. The vehicle file names the launcher by a `gameData/Weapons/groundModels_weapons/...`
+path. [read]
+
+- `guidanceType` is `saclos`. `loadFactorMax` is present (12 to 50 g across
+  the ground SAMs). Examples: VT1 (`163mm_vt_1_launcher_user_cannon`) 50 g,
+  57E6 (`170mm_57e6_rocket_launcher`) 32 g, 57E6M 50 g, 9M311 32 g.
+- Some missiles give the motor as `force`/`timeFire`/`massEnd`. Others give it
+  in a `propulsion0` block with `impulse0`/`impulse1` stages
+  (`time`, `force`, `massEnd`). The 57E6 uses `propulsion0`.
+- `guidance/lineOfSightAutopilot` holds the command loop:
+  `crossDistToReqCrossVelMult` (VT1 and 9M311 9.0, 57E6 3.85),
+  `reqCrossVelRationMax` (0.65), `velDiffToReqAccelMult` (5.5 to 6.0),
+  gain ramps `timeToGain0..3` as [time s, gain], and
+  `accelControl/reqAccelMax` (g; equal to `loadFactorMax` on the files read)
+  with `baseIndSpeed` 1800. The exact control law is not reverse-engineered.
+- The 57E6 guidance also has `leading: true`, `leadMult` 0.5,
+  `distToTargetToLoftElevation` [8000, 4.5, 2000, 0.0] and
+  `targetElevationToLoftElevationMult`. So it leads the target and lofts at
+  long range. The VT1 and 9M311 files have no such keys.
+
+Live measure (one vehicle, VT1, about 975 m/s after burnout): after the
+operator moved the sight down from above the target, the flight path turned
+at about 15 deg/s, which is about 26 g, not the 50 g limit. The path stopped
+at 16 to 18 deg below level. The speed fell by about 110 m/s each second. The
+6.3 drag law with `f(M)` at Mach 2.9 gives about 120 m/s^2 for this missile,
+so the law fits a ground SACLOS missile too. [measured, one missile]
+
 ### 6.5 Seekers and countermeasure data
 
 - IR seeker: `rocket/guidance/opticalSeeker`. `rangeBand0` (rear-aspect lock

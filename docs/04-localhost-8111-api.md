@@ -151,7 +151,10 @@ Fields:
 - `grid_zero` gives the world origin of the grid.
 - `hud_type` reads `1` for a ground map and `0` for an air map. This mapping is
   cross-checked against air and ground battles.
-- `map_generation` counts battles. The value increments on each new battle.
+- `map_generation` increments on each new battle. It also increments when the
+  player respawns in the same battle, for example on a change from a tank to an
+  aircraft. Measured: the value went from 7 to 8 at a respawn while the battle
+  clock continued. So a change of this value does not always mean a new map.
   A client polls this field to detect a map change.
 - `valid` reports `true` when a map is loaded.
 

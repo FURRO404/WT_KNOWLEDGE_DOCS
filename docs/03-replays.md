@@ -26,9 +26,9 @@ A `.wrpl` file starts with two `uint32` values:
   are `E5 AC 00 10` (little-endian). Every parser checks these four bytes. Do
   not confuse it with the next field.
 - `magic` at offset 4. This is the format version, and it changes each major
-  game version. The current value is `0x00018C0B`. `WrplReplayParser` calls it
-  `CURR_MAGIC`. The dev-server value is `0x00018C0A`. The parsers name the
-  supported version "18c0b".
+  game version. The current value is `0x00018C1C` (game 2.59, see below). The
+  value before it was `0x00018C0B`. `WrplReplayParser` calls it `CURR_MAGIC`.
+  The dev-server value is `0x00018C0A`.
 
 The C++ and Go parsers check `magic == CURR_MAGIC` and reject an unknown
 version.
@@ -47,7 +47,7 @@ authority. The struct uses `#pragma pack(push, 1)`, so there is no padding.
 | Offset | Type | Field | Meaning |
 |---|---|---|---|
 | 0 | `uint32` | `header` | File identifier `0x1000ACE5`. |
-| 4 | `uint32` | `magic` | Format version (`0x00018C0B`). |
+| 4 | `uint32` | `magic` | Format version (`0x00018C1C`; before it `0x00018C0B`). |
 | 8 | `char[128]` | `level_path` | Level asset path, for example `levels/avg_guadalcanal.bin`. NUL-terminated. |
 | 136 | `char[260]` | `mission_file` | Mission `.blk` path. |
 | 396 | `char[128]` | `mission_name` | Mission or game-mode name. |
@@ -1483,8 +1483,9 @@ replays and segmented server replays (`ServerReplayReader`). It offers a full
 decompress reader and a streaming compressed reader. It loads `VROMFs`
 containers for templates and translation. It exposes the whole API through
 `pybind11` bindings for prototypes and test oracles. It also ships the standalone
-`ClogDecryptor`. Its supported version is `18c0b`. Its `README` still lists
-`char.vromfs.bin` loading and a VROMFs repacker as TODO items.
+`ClogDecryptor`. Its `CURR_MAGIC` is `0x00018C1C`. When the version is
+different, it logs the two versions and rejects the replay. `char.vromfs.bin`
+loading is done. A VROMFs repacker is still a TODO item.
 
 ### 3.2 `wrpl-inspector` (Go, with a dear-imgui GUI)
 
