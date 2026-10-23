@@ -17,7 +17,7 @@ For the DataBlock (BLK) binary format, see
 variants (FAT `0x01` and BBF3) but does not re-explain the format.
 
 For the repositories and tools, see also
-[10-tooling-and-repos.md](10-tooling-and-repos.md).
+[09-tooling-and-repos.md](09-tooling-and-repos.md).
 
 ---
 
@@ -242,9 +242,9 @@ The read path supplies the data for other screens of the client:
 * The meta block (BBF3).
 * Clan info and the member roster (`cln_clan_get`). For the squadron roster
   and the SRE rating fields, see
-  [11-sre-tss-api-info.md](11-sre-tss-api-info.md) section 9.
+  [10-sre-tss-api-info.md](10-sre-tss-api-info.md) section 9.
 * Leaderboard pages. For the squadron leaderboard, see
-  [11-sre-tss-api-info.md](11-sre-tss-api-info.md) section 9.3.
+  [10-sre-tss-api-info.md](10-sre-tss-api-info.md) section 9.3.
 * News.
 
 ### 4.3 Server-side rules for writes

@@ -21,7 +21,7 @@ For related formats and APIs, see:
 - [Replays (`.wrpl`)](03-replays.md)
 - [The localhost:8111 telemetry API](04-localhost-8111-api.md)
 - [The char server API](05-char-server-api.md)
-- [Terrain and maps](07-terrain-and-maps.md)
+- [Terrain, maps and missions](07-terrain-maps-and-missions.md)
 
 ---
 
@@ -536,7 +536,7 @@ Oodle is not Windows-only. Two decoders exist:
   tool path runs on Windows.
 - `ooz` is an open standalone Kraken/Leviathan decoder. It needs no Oodle DLL.
   It decodes Oodle on Linux with the `ooz_linux` build for terrain, props, and
-  textures. See [07-terrain-and-maps.md](07-terrain-and-maps.md) for the
+  textures. See [07-terrain-maps-and-missions.md](07-terrain-maps-and-missions.md) for the
   `ooz_linux` framing.
 
 Command (`wt-tools`, Windows path):
@@ -572,7 +572,7 @@ game's own `daKernel-dev.dll` for Oodle and zstd (ordinals 572/574 for Oodle,
 954/962 for zstd), and it uses `pylzma` and `zlib` for the others. DAE uses the
 game DLL, but Oodle decode does not need it. On Linux the `ooz` decoder reads
 the same Oodle stream with no DLL. See
-[07-terrain-and-maps.md](07-terrain-and-maps.md).
+[07-terrain-maps-and-missions.md](07-terrain-maps-and-missions.md).
 
 ### 3.4 Game resource packs (GRP2, `*.grp`) and descriptors
 
@@ -612,7 +612,7 @@ TAG_END  0x444e4500  end
 ```
 
 The `HM2`, `LMAP`, and `RIGZ` tags matter for terrain and prop work. See
-[Terrain and maps](07-terrain-and-maps.md) for how to decode the heightmap and
+[Terrain and maps](07-terrain-maps-and-missions.md) for how to decode the heightmap and
 the prop layout.
 
 ### 3.6 CLOG encrypted logs (`*.clog`)

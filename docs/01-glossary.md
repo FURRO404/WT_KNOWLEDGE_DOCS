@@ -19,7 +19,7 @@ names the section that covers the term in full.
 - **DDSx / dxp** — the Dagor texture format and its pack. See [02](02-file-formats.md).
 - **clog** — an encrypted log/stream form in a replay. See [03](03-replays.md).
 - **datamine** — the game files unpacked to a folder tree. The local copy is the
-  `War-Thunder-Datamine` repository. See [02](02-file-formats.md), [10](10-tooling-and-repos.md).
+  `War-Thunder-Datamine` repository. See [02](02-file-formats.md), [09](09-tooling-and-repos.md).
 
 ## Replays and live feeds
 
@@ -37,9 +37,9 @@ names the section that covers the term in full.
 - **JWT** — the JSON Web Token that authenticates a `char` request. See
   [05](05-char-server-api.md).
 - **TSS** — the Tournament Service System, the tournament site
-  `tss.warthunder.com`. See [11](11-sre-tss-api-info.md).
+  `tss.warthunder.com`. See [10](10-sre-tss-api-info.md).
 - **SRE / SQB** — Squadron Realistic Battles and its rating. See
-  [11](11-sre-tss-api-info.md).
+  [10](10-sre-tss-api-info.md).
 
 ## Combat math
 
@@ -54,15 +54,15 @@ names the section that covers the term in full.
 ## World and units
 
 - **HM2** — a heightmap block. It decodes with the ooz/Kraken (Oodle) codec.
-  See [07](07-terrain-and-maps.md).
+  See [07](07-terrain-maps-and-missions.md).
 - **LandRayTracer / lmap / gridHt** — the full-level heightfield. See
-  [07](07-terrain-and-maps.md).
+  [07](07-terrain-maps-and-missions.md).
 - **RIGz / rendinst** — the prop block: buildings and trees placed by matrix.
-  See [07](07-terrain-and-maps.md).
+  See [07](07-terrain-maps-and-missions.md).
 - **landclass / albedo** — the biome-to-texture chain that bakes the ground
-  color. See [07](07-terrain-and-maps.md).
+  color. See [07](07-terrain-maps-and-missions.md).
 - **dynaf composit** — the dynamic airfield placed on air maps. See
-  [07](07-terrain-and-maps.md).
+  [07](07-terrain-maps-and-missions.md).
 - **TMatrix** — a Dagor 4x3 transform matrix. It is BLK param type `0x0b`
   (`FLOAT12` / `m4x3f`), 48 bytes. See [02](02-file-formats.md).
 - **ECS** — the entity component system the game uses. Replays carry net ECS

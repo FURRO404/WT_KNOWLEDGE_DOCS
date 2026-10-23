@@ -230,9 +230,9 @@ The level BLK field `tankMapCoord0/1` in `levels/avg_berlin.blk` read the same
 pair. An air battle returned `[-65536,-65536]..[65536,65536]`. So `map_info`
 replaces the level BLK for the picture kind that the HUD shows.
 
-See [09-coordinates-and-map-transforms.md](09-coordinates-and-map-transforms.md) for the
+See [07-terrain-maps-and-missions.md §4](07-terrain-maps-and-missions.md#4-coordinate-systems) for the
 world coordinate model and the world to map transform, and
-[07-terrain-and-maps.md](07-terrain-and-maps.md) for the map picture and terrain
+[07-terrain-maps-and-missions.md](07-terrain-maps-and-missions.md) for the map picture and terrain
 extents.
 
 ## `GET /map.img`
@@ -433,7 +433,7 @@ tool needs it.
 
 - [03-replays.md](03-replays.md) — replay capture, an offline alternative data
   source to 8111.
-- [07-terrain-and-maps.md](07-terrain-and-maps.md) — the map picture, the level
+- [07-terrain-maps-and-missions.md](07-terrain-maps-and-missions.md) — the map picture, the level
   extents, and the terrain that back `map.img` and `map_info`.
-- [09-coordinates-and-map-transforms.md](09-coordinates-and-map-transforms.md) — the
+- [07-terrain-maps-and-missions.md §4](07-terrain-maps-and-missions.md#4-coordinate-systems) — the
   coordinate model that consumes the normalized positions from `map_obj.json`.

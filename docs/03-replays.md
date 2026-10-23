@@ -104,7 +104,7 @@ several files, and each file has the same `session_id`. Read it as a
 little-endian `uint64`, then format it as hex. To read only this ID, you do not
 need to decompress the file. [verified, 2026-10] To download the server
 replay of the same match with this ID, see
-[11-sre-tss-api-info.md](11-sre-tss-api-info.md) section 7a.
+[10-sre-tss-api-info.md](10-sre-tss-api-info.md) section 7a.
 
 ### 1.3 Section layout
 
@@ -1406,7 +1406,7 @@ Two client replays of custom air duels (game 2.59, 1.8 MB and 2.5 MB, header
 - **A mission's gun lock is not in the replay.** Two client replays of a
   custom air-duel mission with a TSS-style gun lock (25 rounds) were checked.
   For the TSS duel missions and their gun lock, see
-  [11-sre-tss-api-info.md](11-sre-tss-api-info.md) section 6.1.
+  [10-sre-tss-api-info.md](10-sre-tss-api-info.md) section 6.1.
   No packet kind marks the unlock: none occurs 28 to 32 s after the round
   starts more often than at control offsets, and no packet text names a lock,
   a timer or a countdown. The mission script enforces the lock on the server.
@@ -1515,7 +1515,7 @@ per-parser results instead.
 [wrpl-inspector](https://github.com/maxsupermanhd/wrpl-inspector)
 (Go) carves one match out of the replay parts into a `CarvedReplay`. It is the
 ingest backend behind the heatmap stats
-(see [09-coordinates-and-map-transforms.md](09-coordinates-and-map-transforms.md)). Its
+(see [07-terrain-maps-and-missions.md §4](07-terrain-maps-and-missions.md#4-coordinate-systems)). Its
 data model is a good summary of what a replay yields:
 
 - `Kill`: time, killer and victim (player id, model, entity index, position),

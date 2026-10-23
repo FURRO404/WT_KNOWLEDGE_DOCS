@@ -1,4 +1,4 @@
-# 11 — TSS tournament API and Squadron Realistic rating
+# 10 — TSS tournament API and Squadron Realistic rating
 
 > Initial research: FURRO404, TSS API capture and squadron rating decode. https://github.com/FURRO404
 > Contributors: War-Thunder-Datamine by gszabi99 (the `clanDuel` settings).

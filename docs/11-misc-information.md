@@ -1,7 +1,8 @@
-# 12 — Game client and launcher
+# 11 — Misc information
 
-This chapter covers how the game client and its launcher behave on the
-desktop: windows, focus, audio, start-up arguments and Steam detection.
+This chapter holds notes that fit no other chapter. At this time it covers how
+the game client and its launcher behave on the desktop: windows, focus, audio,
+start-up arguments and Steam detection.
 
 ## Native Linux client window behavior
 

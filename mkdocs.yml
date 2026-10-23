@@ -40,10 +40,8 @@ nav:
   - 04 Localhost 8111 API: 04-localhost-8111-api.md
   - 05 Char server API: 05-char-server-api.md
   - 06 Ballistics and armor: 06-ballistics-and-armor.md
-  - 07 Terrain and maps: 07-terrain-and-maps.md
+  - 07 Terrain, maps and missions: 07-terrain-maps-and-missions.md
   - 08 Vehicles and models: 08-vehicles-and-models.md
-  - 09 Coordinates and map transforms: 09-coordinates-and-map-transforms.md
-  - 10 Tooling and repos: 10-tooling-and-repos.md
-  - 11 TSS API and SRE rating: 11-sre-tss-api-info.md
-  - 12 Game client and launcher: 12-game-client-and-launcher.md
-  - 13 Missions and battle rules: 13-missions-and-battle-rules.md
+  - 09 Tooling and repos: 09-tooling-and-repos.md
+  - 10 TSS API and SRE rating: 10-sre-tss-api-info.md
+  - 11 Misc information: 11-misc-information.md

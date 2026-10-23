@@ -12,7 +12,7 @@ packs on disk. The data does not change while the game runs.
 For armor and penetration that consume the damage model, see
 [06-ballistics-and-armor.md](06-ballistics-and-armor.md). For the raw pack and
 BLK formats, see [02-file-formats.md](02-file-formats.md). For terrain props,
-see [07-terrain-and-maps.md](07-terrain-and-maps.md). For replays that name
+see [07-terrain-maps-and-missions.md](07-terrain-maps-and-missions.md). For replays that name
 which vehicle a player drove, see [03-replays.md](03-replays.md).
 
 ---
@@ -555,7 +555,7 @@ Example: `us_m47_patton_II` has `economicRankHistorical` 19 (BR 7.3).
   [verified, 2.58]
 - The vehicle ids of the TSS tournament site are the same unit ids. All 245
   ids in six sampled tournaments were in `wpcost.blk`. See
-  [11-sre-tss-api-info.md](11-sre-tss-api-info.md). [verified, 2.58]
+  [10-sre-tss-api-info.md](10-sre-tss-api-info.md). [verified, 2.58]
 - `wpcost.blk` holds only the BR of its patch. For a BR at an earlier date, read
   the `char.vromfs.bin` of that patch.
 

@@ -1,4 +1,4 @@
-# 10 — Tooling and repository index
+# 09 — Tooling and repository index
 
 This section lists the public repositories that hold War Thunder (WT) work. Each
 row says what the repository does, its language, and where to read more.
@@ -18,8 +18,8 @@ row says what the repository does, its language, and where to read more.
 |---|---|---|---|
 | [WrplReplayParser](https://github.com/LivingTheDagor/WrplReplayParser) | C++ | `.wrpl` parser with Python bindings | [03](03-replays.md) |
 | [wrpl-inspector](https://github.com/maxsupermanhd/wrpl-inspector) | Go | `.wrpl` library and GUI | [03](03-replays.md) |
-| [wt-heatmaps](https://github.com/maxsupermanhd/wt-heatmaps) | Go | Kill heatmaps and the `coordencode` codec | [09](09-coordinates-and-map-transforms.md) |
-| [WtMiniMapPictures](https://github.com/LivingTheDagor/WtMiniMapPictures) | images | Minimap image set | [07](07-terrain-and-maps.md) |
+| [wt-heatmaps](https://github.com/maxsupermanhd/wt-heatmaps) | Go | Kill heatmaps and the `coordencode` codec | [07](07-terrain-maps-and-missions.md#4-coordinate-systems) |
+| [WtMiniMapPictures](https://github.com/LivingTheDagor/WtMiniMapPictures) | images | Minimap image set | [07](07-terrain-maps-and-missions.md) |
 
 ## External community tools (public)
 
@@ -63,5 +63,5 @@ match statistics.
 - `War-Thunder-Datamine` tracks the game version, at 2.58.0.24 at the time of
   this document.
 
-For the native Linux client and launcher, see
-[12-game-client-and-launcher.md](12-game-client-and-launcher.md).
+For the native Linux client, the launcher and other client notes, see
+[11-misc-information.md](11-misc-information.md).
