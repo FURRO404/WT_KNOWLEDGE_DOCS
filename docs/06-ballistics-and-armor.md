@@ -1751,6 +1751,19 @@ reproduces those tables. Datamine 2.58.0.24.
 Each missile is `gamedata/weapons/rocketguns/<missile>.blk`. The flight data
 is in the `rocket` block. Variants that end in `_default` repeat a missile.
 
+- Launcher variants (for example `us_aim7m_sparrow_f_14`, `_f_15`, `_f_16`,
+  `_fa_18`, `fr_matra_super_530f_mirage_2000`) change only the radar seeker's
+  `receiver.range`, `receiver.rangeMax` and `transmitter` keys. The flight
+  keys are the same. `_bol_pod`, `_group`, `_cwp` and `_switzerland` variants
+  are full copies. Some helicopter Stinger and Mistral variants change only
+  `opticalSeeker/arretAngles`. [read, 2.58.0.24]
+- Two anti-radar missiles have `bulletType` `aam`: LD-10 (`cn_ld10`) and
+  AGM-122 (`us_agm_122`). Their `radarSeeker` has `aircraftAsTarget: false`
+  and `targetSignatureType: radarIntercept`. A filter for air-to-air missiles
+  must test `aircraftAsTarget`, not only `bulletType`. [read, 2.58.0.24]
+- Fireflash (`uk_fireflash`) has no seeker block. Its guidance is a
+  `lineOfSightAutopilot` (beam riding). [read]
+
 | Key | Unit | Meaning |
 |---|---|---|
 | `mass`, `massEnd`, `massEnd1` | kg | launch mass, mass after stage 0, mass after stage 1 |
@@ -1792,6 +1805,20 @@ own missile model, so they are ground truth for a simulator.
   [0.79, 1.12]. Some air-to-air missiles have no tables (AIM-4, AIM-7C, R-13M,
   R.511, Rb 27, Mistral, Stinger, Igla, Verba). So a missile filter must not
   need the usual set or a table. [read]
+- Tables that have no `timeMax` are of two kinds. [measured, 2.58.0.24,
+  with the 6.3 drag law and a tail-chase end at about 100 m/s closing speed]
+  - **Newer keys, no `timeMax`** (`rangeMaxAltDiff`, `targetMach2Mult`; for
+    example Python 3/4, PL-8, PL-9, R.550 Magic, Red Top): these are kinematic
+    tables like the others. 176 cases fit with a tail-chase mean of +0.1 % and
+    a head-on median of -0.7 %.
+  - **`altDiff` key** (all AIM-9 from B to P-4 except L/M, R-3S/R, PL-2/5,
+    Shafrir 1/2, Firestreak, Rb 24, R-23, R-24, A-91, Fl Lwf 63): the values
+    are round numbers. The tail-chase values fit (190 cases, median +1.6 %).
+    The values in the head-on slots fit no straight-flying target: they are
+    only 1.1 to 1.5 times the tail-chase values, where a kinematic head-on
+    range is 3 to 5 times. Head-on, beam (median +16 %, quartiles -30 % and
+    +43 %) and 135 degrees fit no better. So do not use the head-on slots of
+    these tables as ground truth. Their source is not known.
 - `targetMach[i]` goes with `fighterMach[i]`.
 - Order of the 4 values: [fighter M0.9 tail chase, M0.9 head-on, M1.2 tail
   chase, M1.2 head-on].
