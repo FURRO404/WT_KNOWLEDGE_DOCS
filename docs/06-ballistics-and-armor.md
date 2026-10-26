@@ -1757,8 +1757,9 @@ is in the `rocket` block. Variants that end in `_default` repeat a missile.
   keys are the same. `_bol_pod`, `_group`, `_cwp` and `_switzerland` variants
   are full copies. Some helicopter Stinger and Mistral variants change only
   `opticalSeeker/arretAngles`. [read, 2.58.0.24]
-- Two anti-radar missiles have `bulletType` `aam`: LD-10 (`cn_ld10`) and
-  AGM-122 (`us_agm_122`). Their `radarSeeker` has `aircraftAsTarget: false`
+- Two anti-radiation missiles (HARMs), which home on ground radar emitters,
+  have `bulletType` `aam`: LD-10 (`cn_ld10`) and AGM-122 Sidearm
+  (`us_agm_122`). Their `radarSeeker` has `aircraftAsTarget: false`
   and `targetSignatureType: radarIntercept`. A filter for air-to-air missiles
   must test `aircraftAsTarget`, not only `bulletType`. [read, 2.58.0.24]
 - Fireflash (`uk_fireflash`) has no seeker block. Its guidance is a
