@@ -64,4 +64,4 @@ match statistics.
   this document.
 
 For the native Linux client, the launcher and other client notes, see
-[11-misc-information.md](11-misc-information.md).
+[11-misc-game-info.md](11-misc-game-info.md).

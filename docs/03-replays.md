@@ -140,7 +140,7 @@ several files, and each file has the same `session_id`. Read it as a
 little-endian `uint64`, then format it as hex. To read only this ID, you do not
 need to decompress the file. [verified, 2026-10] To download the server
 replay of the same match with this ID, see
-[10-sre-tss-api-info.md](10-sre-tss-api-info.md) section 7a.
+[10-sre-tss-info.md](10-sre-tss-info.md) section 7a.
 
 ### 1.3 Section layout
 
@@ -1464,7 +1464,7 @@ Two client replays of custom air duels (game 2.59, 1.8 MB and 2.5 MB, header
 - **A mission's gun lock is not in the replay.** Two client replays of a
   custom air-duel mission with a TSS-style gun lock (25 rounds) were checked.
   For the TSS duel missions and their gun lock, see
-  [10-sre-tss-api-info.md](10-sre-tss-api-info.md) section 6.1.
+  [10-sre-tss-info.md](10-sre-tss-info.md) section 6.1.
   No packet kind marks the unlock: none occurs 28 to 32 s after the round
   starts more often than at control offsets, and no packet text names a lock,
   a timer or a countdown. The mission script enforces the lock on the server.

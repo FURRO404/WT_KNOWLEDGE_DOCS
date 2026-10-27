@@ -17,8 +17,8 @@ combat, and how the world and the units are built.
 | 07 | [Terrain, maps and missions](07-terrain-maps-and-missions.md) | Terrain decode, props, terrain color, coordinates and map transforms, the level catalog, air battle base rules |
 | 08 | [Vehicles and models](08-vehicles-and-models.md) | Vehicles, models, camos, X-ray, damage model, flight model data |
 | 09 | [Tooling and repos](09-tooling-and-repos.md) | The repositories and tools |
-| 10 | [TSS API and SRE rating](10-sre-tss-api-info.md) | The public API of the tournament site (TSS), and the Squadron Realistic (SRE) personal and squadron ratings |
-| 11 | [Misc information](11-misc-information.md) | Native Linux client windows, focus, audio, launcher flags, Steam detection |
+| 10 | [Game modes: TSS, SRE](10-sre-tss-info.md) | Game modes and their APIs: the tournament site (TSS), Squadron Realistic (SRE) ratings and season timing |
+| 11 | [Misc game information](11-misc-game-info.md) | Native Linux client windows, focus, audio, launcher flags, Steam detection; the in-game chat (IRC menu chat, battle chat, commands, name privacy) |
 
 ## How the pieces fit
 

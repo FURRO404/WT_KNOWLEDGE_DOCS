@@ -19,8 +19,8 @@ Read it as a website: https://furro404.github.io/WT_KNOWLEDGE_DOCS/
 | 07 | [docs/07-terrain-maps-and-missions.md](docs/07-terrain-maps-and-missions.md) | Terrain decode, props, terrain color, coordinates and map transforms, the level catalog, air battle base rules |
 | 08 | [docs/08-vehicles-and-models.md](docs/08-vehicles-and-models.md) | Vehicles, models, camos, X-ray, damage model |
 | 09 | [docs/09-tooling-and-repos.md](docs/09-tooling-and-repos.md) | The repositories and tools |
-| 10 | [docs/10-sre-tss-api-info.md](docs/10-sre-tss-api-info.md) | The public API of the tournament site (TSS), and the Squadron Realistic (SRE) personal and squadron ratings |
-| 11 | [docs/11-misc-information.md](docs/11-misc-information.md) | Native Linux client windows, focus, audio, launcher flags, Steam detection |
+| 10 | [docs/10-sre-tss-info.md](docs/10-sre-tss-info.md) | Game modes and their APIs: the tournament site (TSS), Squadron Realistic (SRE) ratings and season timing |
+| 11 | [docs/11-misc-game-info.md](docs/11-misc-game-info.md) | Native Linux client windows, focus, audio, launcher flags, Steam detection; the in-game chat (IRC menu chat, battle chat, commands, name privacy) |
 
 ## How the pieces fit
 

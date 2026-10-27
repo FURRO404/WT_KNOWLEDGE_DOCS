@@ -242,9 +242,9 @@ The read path supplies the data for other screens of the client:
 * The meta block (BBF3).
 * Clan info and the member roster (`cln_clan_get`). For the squadron roster
   and the SRE rating fields, see
-  [10-sre-tss-api-info.md](10-sre-tss-api-info.md) section 9.
+  [10-sre-tss-info.md](10-sre-tss-info.md) section 9.
 * Leaderboard pages. For the squadron leaderboard, see
-  [10-sre-tss-api-info.md](10-sre-tss-api-info.md) section 9.3.
+  [10-sre-tss-info.md](10-sre-tss-info.md) section 9.3.
 * News.
 
 ### 4.3 Server-side rules for writes

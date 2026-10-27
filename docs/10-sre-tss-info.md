@@ -1,4 +1,4 @@
-# 10 — TSS tournament API and Squadron Realistic rating
+# 10 — Game modes: TSS tournaments and Squadron Realistic
 
 > Initial research: FURRO404, TSS API capture and squadron rating decode. https://github.com/FURRO404
 > Contributors: War-Thunder-Datamine by gszabi99 (the `clanDuel` settings).
@@ -10,7 +10,10 @@ This document has two parts:
   and CDN.
 - Section 9: the rating of Squadron Realistic Battles (SRE, also called SQB),
   the squadron roster and ratings from the `char` server, and the datamined
-  rating settings.
+  rating settings and the season timing.
+
+New information about the game modes (their APIs and their rules) goes in
+this chapter.
 
 The TSS source is empirical research against the live site on 2026-09-24
 (about 70 requests, no login) and a read of the site JavaScript
@@ -492,3 +495,41 @@ Players reported these approximate awards per match. They are not verified.
 
 The calculation of a personal award is not known. The effect of the
 `periodicDiminish*` keys is not known.
+
+### 9.6 Season and BR-cap timing [verified, 2026 match and rating history]
+
+A season lasts two months and starts on the 1st of an odd month (January, March,
+May, July, September, November). The max BR steps down once a week. Gaijin
+posts the schedule in one forum post that it edits for each season
+(`forum.warthunder.com/t/4446`). The post often comes out late, and its edit
+history is not public.
+
+Two events happen at the season start, and they are independent:
+
+- **The point reset.** Squadron points go to 0 at about 00:00 UTC on the 1st.
+  The rating history puts it between 22:30 UTC on the last day of the old season
+  and 00:50 UTC on the 1st. The reset was on time at each start from March to
+  September 2026.
+- **The BR-cap change.** The cap changes later on the 1st. Usually this is in
+  the gap between the US slot and the EU slot (about 07:00 to 14:00 UTC).
+
+So the US slot on the 1st usually counts for the new season but plays at the
+last cap of the old season (4.7 or 5.0). The exceptions:
+
+| Season start | Points | BR cap |
+|---|---|---|
+| 2026-01-01 | reset (forum report; the rating history starts after it) | stayed at 4.7. The mode closed and came back at the top cap on Jan 3 at about 21:25 UTC |
+| 2026-03-01 | reset 22:30–02:04 UTC | top cap from about 06:53 UTC, at the end of the US slot |
+| 2026-05-01 | reset 22:30–04:09 UTC | top cap between 06:25 and 14:08 UTC |
+| 2026-07-01 | reset 22:30–02:47 UTC | stayed at 5.0 until about 14:30 UTC, inside the EU slot |
+| 2026-09-01 | reset 22:30–00:50 UTC | top cap between 06:47 and 14:05 UTC |
+
+The weekly steps change at the same time of day as the cap change, between the
+two slots on the date of the schedule. They fall on the weekday of the season
+start (Jan: Thursday, Mar: Monday, May: Friday, Jul: Wednesday, Sep: Tuesday).
+In March, week 1 ran 8 days, from Sunday the 1st to Monday the 9th. The posted
+schedule can differ from the game. The 2026-01 post put the last step on
+Tue 24.02, but the game kept the Thursday rhythm and changed on Thu 26.02.
+
+The match data cannot show the exact minute of a change that falls between the
+two slots, because no matches are played then.
