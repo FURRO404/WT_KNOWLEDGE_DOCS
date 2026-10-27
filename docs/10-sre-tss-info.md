@@ -85,7 +85,9 @@ cluster parameter changes nothing. [verified]
   live sample shows what it means. [verified values, js]
 - `typeTournament`: `single-elumination`, `double-elumination`, `swiss`.
   [verified]
-- `gameMode`: `RB`, `AB`, `HB` (HB is simulator battles). [verified]
+- `gameMode`: `RB`, `AB`, `HB`. HB means Historical Battles, the TSS name for
+  Simulator Battles (SB). In the game files `historical` means RB, not SB.
+  [verified]
 - `statisticGroup`: `tank`, `aircraft`, `ship`, `mixed` (tanks and aircraft).
   [verified]
 - `teamSize`: 1, 2, 3, 4, 5 and 8 were seen. `minTeamSize`–`maxTeamSize` is the

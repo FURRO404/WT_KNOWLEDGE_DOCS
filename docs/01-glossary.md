@@ -15,7 +15,9 @@ term that no chapter covers has no link.
   `historical` and `simulation`. Some mission files and replay data call SB
   `hardcore`. See [08 §5](08-vehicles-and-models.md#5-battle-rating),
   [10 §6.1](10-sre-tss-info.md#61-air-duel-missions).
-- **HB**: the TSS name for Simulator Battles. See
+- **HB (Historical Battles)**: the TSS name for Simulator Battles (SB). Do
+  not confuse it with the `historical` key in the game files: there it means
+  Realistic Battles (RB), for example `economicRankHistorical`. See
   [10 §2](10-sre-tss-info.md#2-tournament-list-getactivetournaments).
 - **BR (battle rating)**: the number that sets which vehicles meet in a battle.
   Each mode has its own BR. `BR = economic rank / 3 + 1`, rounded to one
