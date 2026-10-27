@@ -60,12 +60,12 @@ authority. The struct uses `#pragma pack(push, 1)`, so there is no padding.
 | 724 | `uint32` | `SessionType` | Session type. |
 | 728 | `uint32` | `player_count` | Player count. |
 | 732 | `uint64` | `session_id` | Match identifier. Every part of one match shares it. |
-| 740 | `uint8` | `replay_part_number` | Ordinal of this file in a server replay part sequence. |
-| 741 | `uint8` | `unk1` | Unknown. See the server-detection note below. |
+| 740 | `uint16` | `replay_part_number` | Ordinal of this file in a server replay part sequence. The client writes a `uint16`. Byte 741 (the old `unk1`) is its high byte. |
 | 742 | `uint16` | `segmentLengthSec` | Server segment length in seconds. |
 | 744 | `uint32` | `skiesInitialRandomSeed` | Sky random seed. |
-| 748 | `uint16` | `settings_blk_size` | Size in bytes of the settings BLK after the header. |
-| 750 | `char[29]` | `unk3` | Unknown. |
+| 748 | `uint32` | `settings_blk_size` | Size in bytes of the settings BLK after the header. The client writes a `uint32`, and its loader tests the `int32` for `> 0`. |
+| 752 | `char[23]` | `unk3` | Unused. Always zero. |
+| 775 | `int32` | `maxRespawns` | Respawn limit of the mission. `-1` is no limit. Values seen: 1, -1, 4, 0, 3. |
 | 779 | `bool` | `isWorldWar` | World War mode flag. |
 | 780 | `char[128]` | `location_name` | Localized location name. |
 | 908 | `uint32` | `start_time` | Match start time, Unix seconds. |
@@ -81,7 +81,8 @@ authority. The struct uses `#pragma pack(push, 1)`, so there is no padding.
 | 948 | `bool` | `isAttempts` | Attempts flag. |
 | 949 | `bool` | `isLimitedAmmo` | Limited-ammo flag. |
 | 950 | `bool` | `isLimitedFuel` | Limited-fuel flag. |
-| 951 | `char[13]` | `unk5` | Unknown. |
+| 951 | `bool` | `isMultiplayer` | 1 when the match was an online session. See below. |
+| 952 | `char[12]` | `unk5` | Unused. Always zero. |
 | 964 | `uint32` | `gameMode` | Game mode. |
 | 968 | `char[128]` | `chapterName` | Chapter name. |
 | 1096 | `char[128]` | `battle_kill_streak` | Battle kill-streak string. |
@@ -92,9 +93,44 @@ authority. The struct uses `#pragma pack(push, 1)`, so there is no padding.
 field names (for example `Raw_Level`, `Raw_LevelSettings`, `ResultsBlkOffset`,
 `SettingsBLKSize`, `StartTime`).
 
+**The game's own names for the header fields.** The client gives the header
+to its scripts as a table with these keys, in header order: `version` (4),
+`scene` (8), `missionFile`, `missionName`, `environment`, `weather`,
+`customDifficulty` (688, the two `uint64` as one 16-byte value),
+`numPlayers` (728), `sessionId` (732, formatted as hex), `segmentLengthSec`,
+`skiesInitialRandomSeed`, `isWorldWar`, `locName` (780), `startTime`,
+`timeLimit`, `scoreLimit`, `killLimit`, `gameType`, `restoreType`,
+`playerNo`, `numAttempts`, `maxAttempts`, `isAttempts`, `isLimitedAmmo`,
+`isLimitedFuel`, `gameMode`, `chapterName`, `nameKillStreaks` (1096),
+`snapshotPeriodSec` and `gameVersion`. The table has no key for the part
+number, the settings size, `maxRespawns` or byte 951. [verified, Linux
+client 2.59, static analysis]
+
+**How the client fills the header.** The client replay recorder
+(`ReplayRecorder::startRecord`) copies the mission globals into the header.
+Then it writes the 1234 bytes, the settings BLK, and puts the BLK size at
+offset 748. The replay player copies the same fields back into the mission
+globals. [verified, Linux client 2.59, static analysis]
+
+- `maxRespawns` (775) is the global that the script function
+  `missionGetMaxRespawns` and the respawn-screen checks read.
+- `isMultiplayer` (951) comes from a function that returns 1 when an online
+  session exists. During playback it returns the stored byte. When
+  `numPlayers` is 0, the player uses 32 players if the byte is 1, and 1
+  player if it is 0.
+- `isAttempts` (948) is set to `restoreType == 0`.
+- The recorder does not write offsets 704–723 (`unk0`), the `uint32` at 724
+  (`SessionType`), 752–774, 936 (`unk4`) or 952–963. They were zero in all
+  792 server parts of 68 matches. The other new fields were also checked on
+  these files: byte 741 was 0 in all of them, the largest part number was 27,
+  the `uint32` at 748 agreed with the `uint16` in all of them, and byte 951
+  was 1 in all of them. [verified, 2026-10]
+
 **Server-replay detection uses two different methods.** `wrpl-inspector` tests
 the byte at offset 742 for `0x5A` (`isServer`). `WrplReplayParser` tests
-`playerNo == 0x80000000` instead. A server replay has no local player.
+`playerNo == 0x80000000` instead. A server replay has no local player. Offset
+742 is `segmentLengthSec`, so the `0x5A` test only checks for the 90-second
+server segment.
 
 **A client replay carries the match's real session ID.** A `.wrpl` that the
 game client saves in its `Replays` folder has the same `session_id` at offset
@@ -201,14 +237,17 @@ agree:
 | Value | Name | Meaning |
 |---|---|---|
 | 0 | `EndMarker` | Last packet in a replay. |
-| 1 | `StartMarker` | Start marker. Meaning not fully known. |
+| 1 | `StartMarker` | Empty body. It ends each even (state) part of a server replay, just before the type 5 packet. See 2.6. |
 | 2 | `AircraftSmall` | Aircraft flight-model state. |
 | 3 | `Chat` | Chat message. |
 | 4 | `MPI` | MPI network message. Carries unit movement and battle messages. |
-| 5 | `NextSegment` | Names the next server replay file. Usually the last packet of a part. |
+| 5 | `NextSegment` | The body is a `uint16`: the number of the part that continues the stream. It is the last packet of each part except the last part. |
 | 6 | `ECS` | Network ECS message (entity/component state). |
 | 7 | `Snapshot` | Snapshot. |
 | 8 | `ReplayHeaderInfo` | ECS message hashes for synchronization. Seen in older or server replays. |
+
+The client recorder writes only the types 0 to 8. No other type occurs in its
+code. [verified, Linux client 2.59, static analysis]
 
 ### 2.4 Per-tick unit state
 
@@ -1286,7 +1325,23 @@ The game splits a server-recorded match into several `.wrpl` part files.
   inflates and parses each part on its own, then concatenates the packet lists.
   It must not byte-concatenate the raw streams first, because the inherited-time
   state must not leak across a part boundary.
-- Only the last part carries the results BLK.
+- The last part carries the results BLK. Part 1 also carries one, with the
+  same layout but without the `status` and `success` keys. This was true in
+  all 68 matches. Use the block of the last part. [verified, 2026-10]
+- The part order is in the packets. [verified, 2026-10, 792 parts of 68
+  matches]
+  - Each even part ends with an empty type 1 packet, then a type 5 packet.
+  - Each other part, except the last, ends with a type 5 packet.
+  - The type 5 body is a `uint16`: part + 1 after an even part, part + 2
+    after an odd part. So part 2N holds the state at the start of part
+    2N + 1. Part 0 points to part 1, and part 2 to part 3.
+  - The last part ends with a type 0 packet and has no type 5.
+- The client code that ends a segment does the same. When the part number is
+  odd, it opens part + 1, writes the type 1 packet and the type 5 packet, and
+  then opens part + 2. The player has replay anchors (`moveToAnchor`,
+  `get_replay_anchors`), so the even parts are probably the seek points for
+  rewind. [verified for the order, probable for the purpose, Linux client
+  2.59]
 
 `wrpl-inspector`'s `OpenPartedReplay` and `WrplReplayParser`'s
 `ServerReplayReader` both follow this rule. A client replay is a single
@@ -1368,7 +1423,10 @@ Two client replays of custom air duels (game 2.59, 1.8 MB and 2.5 MB, header
   prefix is variable length: it occupies one byte for 0–2 parameters, two for
   3–340, and three starting at 341. Validate that the declared nested length
   and parameter count fit before reading the pairs. The set of ids
-  changes with the aircraft. Checked against the author's track in four duels
+  changes with the aircraft. The client reads 522 instrument slots (ids 0 to
+  521) and sends only the slots with `|value| > 0.00001`. Thus a missing id
+  means a zero value, not an unknown one. [verified, Linux client 2.59,
+  static analysis] Checked against the author's track in four duels
   (r is the correlation): [verified, 2026-10]
   - 0: airspeed in m/s (r = 0.98–1.00, 0.93–0.96 of the track speed).
   - 39: vertical speed (r = 1.00).
