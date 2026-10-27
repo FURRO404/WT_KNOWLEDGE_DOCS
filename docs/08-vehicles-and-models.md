@@ -549,6 +549,25 @@ Example: `us_m47_patton_II` has `economicRankHistorical` 19 (BR 7.3).
   Use them before `economicRankHistorical`. Example: `f_16c_block_50` has
   `economicRankHistorical` 38 (BR 13.7) but `economicRankTankHistorical` 35
   (BR 12.7). [verified, 2.58]
+- A few aircraft (43 in the 2026-10 datamine, all jets near BR 9) also have
+  keys for naval battles: `economicRankShipArcade` and
+  `economicRankShipHistorical`. There is no ship simulator key. All of them
+  have the value 25 (BR 9.3). Example: `f3h-2` has AB 9.3, RB 9.0, SB 9.3,
+  ground 8.7 and naval 9.3. [verified, 2026-10 datamine]
+- The ground keys exist on 521 aircraft. Ground battles have no arcade key
+  for aircraft.
+- The vehicle card writes the BR of the current mode, then the BRs of the
+  other battle types that differ, in brackets and split by `" | "`, each after
+  its unit-type glyph: `6.0 (▮ 6.3)`. It does not show a ship BR in simulator
+  mode. The glyphs are text keys in `lang.vromfs.bin/lang/*.csv` that the
+  game's symbol font (`symbols_skyquake.ttf`) draws: `icon/unittype/aircraft`
+  `▭` (U+25AD), `tank` `▮` (U+25AE), `ship` `┚` (U+251A), `boat` `⋛`
+  (U+22DB), `helicopter` `⋡` (U+22E1), `human` `╞` (U+255E).
+  [read, `gui.vromfs.bin/scripts/airInfo.nut`, 2026-10 datamine]
+- Some aircraft unit files have no `wpcost.blk` block at all. These are AI,
+  tutorial and event units (for example `dummy_plane`, `fau-1`, `ju-52`,
+  `spitfire_ix_tutorial`), not planes that a player can fly. A missing block
+  is a simple filter for them. [verified, 2026-10 datamine]
 - Every unit block in `wpcost.blk` has at least one `economicRank*` key. A
   lookup fails only when the unit id is wrong. Some ids are not the short
   name: the M1A2 SEP is `us_m1a2_sep_abrams` and the 2S6 is `ussr_zprk_2s6`.
