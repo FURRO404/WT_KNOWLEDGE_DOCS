@@ -651,6 +651,64 @@ The VROMFS groups also hold fonts, UI images, atlases, and text. The
 `vromfs_unpacker` extracts these as raw files. The tool does no further decode of
 a font file; it writes the bytes as they are in the container.
 
+#### 3.8.1 The font container (`ui/fonts.vromfs.bin`) [verified, 2026-10 client]
+
+The client keeps its fonts in `ui/fonts.vromfs.bin`. The datamine does not
+carry this group, so read it from a game install. It is a normal VRFs
+container (§1) and holds 24 files:
+
+- `fonts.blk`: lists the font bins (`ui/fonts`, `ui/fonts_psn_icons`) and the
+  dynamic glyph-texture settings.
+- `fonts.dynfont.blk`: a text BLK with the fallback rules (below).
+- `fonts_psn_icons.bin`: console button icons.
+- `ttfs/*`: 21 TTF/OTF files. The text faces are `pt_sans-*`,
+  `firasanscondensed-*`, `jetbrains-mono-nl-regular`, `default_normal.otf`.
+  The symbol faces are `symbols_skyquake.ttf` (260 codepoints, the UI icon
+  font), `rare_symbols.ttf` and `opensansemoji.ttf`. The CJK subsets are
+  `mplus-2p-regular.subset`, `msyh.subset` and `nanumgothicregular.subset`.
+  The `characters_hud_*` faces are the cockpit HUD/MFD fonts (for example
+  `characters_hud_f14`, `characters_hud_mig_29`, `characters_hud_apache`).
+
+`fonts.dynfont.blk` has one `baseFontData{}` block for each base face. Each
+block has `addFont{ addFont:t=...; htScale:r=...; range:ip2=start,end ... }`
+entries. A codepoint that one `range` covers comes from that `addFont` face,
+in block order. A codepoint that no range covers comes from the base face.
+The usual order is `symbols_skyquake` (58 explicit ranges, for example 163-164,
+178, 697-698, 8364, 8592, 8594-8596), then `rare_symbols` (880-1023,
+7936-8191), `opensansemoji`, the CJK subsets, then Windows system fonts
+(`<system>/segoeui.ttf`, `nirmala.ttf`, `msgothic.ttc`, ...) for other scripts.
+The order is not the same in all blocks.
+
+Note: older copies of `symbols_skyquake.ttf` that float around outside the
+game have 242 codepoints. They lack 18 newer glyphs, for example ╞ U+255E
+(the human unit type) and ◆ U+25C6. Take the font from a current install.
+
+#### 3.8.2 The `icon/*` glyph keys [verified, 2026-10 client]
+
+The UI writes its icons as text. `lang.vromfs.bin/lang/*.csv` has 132 keys
+that start with `icon/`, and every language has the same value. The groups:
+
+| Group | Keys | Examples |
+|---|---|---|
+| `icon/hud_msg_mp_dmg/*` | 34 | kill-feed weapon and cause glyphs |
+| `icon/unitclass/*` | 30 | fighter, bomber, assault, light/medium/heavy tank, SPAA, destroyer, ... |
+| `icon/mpstats/*` | 25 | scoreboard column heads (kills, ground kills, assists, ...) |
+| `icon/unittype/*` | 6 | aircraft ▭ U+25AD, tank ▮ U+25AE, ship ┚ U+251A, boat ⋛ U+22DB, helicopter ⋡ U+22E1, human ╞ U+255E |
+| other | 37 | arrows, star, dice, worldWar, timer, summation, console buttons |
+
+Some values carry color markup, for example
+`<color=@white>┐</color>` (`icon/star/white`),
+`<color=@universalSpareColor>╢</color>` (`icon/universalSpare`) and
+`<color=@worldWarIconColor>╫</color>` (`icon/worldWar/colored`). The `@name`
+is a GUI color constant. Strip the markup to get the glyph.
+
+`fonts.dynfont.blk` sends 130 of the 132 glyphs to `symbols_skyquake.ttf`.
+The other two go to the base face: `icon/mpstats/rowNo` is `#`, and
+`icon/hud_msg_mp_dmg/kill_zone` is ≁ U+2241, which no game font draws.
+
+The full list (key, glyph, codepoints, color, the face that draws it, and all
+game faces that have it) is in [`data/icon_glyphs.json`](../data/icon_glyphs.json).
+
 ### 3.9 The WOSF Rust toolchain
 
 The War Thunder Open Source Foundation (WOSF) maintains a Rust toolchain. It is

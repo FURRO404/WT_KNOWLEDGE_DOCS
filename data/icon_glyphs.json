@@ -1,0 +1,1700 @@
+{
+ "source": "lang.vromfs.bin/lang/*.csv icon/* keys; fonts from ui/fonts.vromfs.bin (2026-10 client)",
+ "note": "drawn_by = the fallback font that fonts.dynfont.blk routes the codepoint to; null = no addFont range covers it, so the base text font draws it (or nothing).",
+ "glyphs": [
+  {
+   "key": "icon/arrowDown",
+   "glyph": "←",
+   "codepoints": [
+    "U+2190"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "firasanscondensed-light.ttf",
+    "firasanscondensed-regular.ttf",
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/arrowRight",
+   "glyph": "↓",
+   "codepoints": [
+    "U+2193"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "firasanscondensed-light.ttf",
+    "firasanscondensed-regular.ttf",
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/arrowUp",
+   "glyph": "→",
+   "codepoints": [
+    "U+2192"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "firasanscondensed-light.ttf",
+    "firasanscondensed-regular.ttf",
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/battleTasks",
+   "glyph": "╴",
+   "codepoints": [
+    "U+2574"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/chest",
+   "glyph": "╪",
+   "codepoints": [
+    "U+256A"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/chest2",
+   "glyph": "⋦",
+   "codepoints": [
+    "U+22E6"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/cross_play",
+   "glyph": "⋭",
+   "codepoints": [
+    "U+22ED"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/cup",
+   "glyph": "␙",
+   "codepoints": [
+    "U+2419"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/dice/dark",
+   "glyph": "⋱",
+   "codepoints": [
+    "U+22F1"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/dice/transparent",
+   "glyph": "⋰",
+   "codepoints": [
+    "U+22F0"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/events",
+   "glyph": "╳",
+   "codepoints": [
+    "U+2573"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/gear",
+   "glyph": "⋥",
+   "codepoints": [
+    "U+22E5"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/gear_broken",
+   "glyph": "⋟",
+   "codepoints": [
+    "U+22DF"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hourglass",
+   "glyph": "▫",
+   "codepoints": [
+    "U+25AB"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/air_defense",
+   "glyph": "▤",
+   "codepoints": [
+    "U+25A4"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/artillery",
+   "glyph": "┗",
+   "codepoints": [
+    "U+2517"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/bomb",
+   "glyph": "▢",
+   "codepoints": [
+    "U+25A2"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/bullet",
+   "glyph": "▥",
+   "codepoints": [
+    "U+25A5"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/burn",
+   "glyph": "▐",
+   "codepoints": [
+    "U+2590"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/crash_a",
+   "glyph": "■",
+   "codepoints": [
+    "U+25A0"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/crash_h",
+   "glyph": "▝",
+   "codepoints": [
+    "U+259D"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/crash_s",
+   "glyph": "▕",
+   "codepoints": [
+    "U+2595"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/crash_t",
+   "glyph": "▕",
+   "codepoints": [
+    "U+2595"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/crit",
+   "glyph": "░",
+   "codepoints": [
+    "U+2591"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/depth_bomb",
+   "glyph": "⌊",
+   "codepoints": [
+    "U+230A"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/exit",
+   "glyph": "␡",
+   "codepoints": [
+    "U+2421"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_a_a",
+   "glyph": "▥",
+   "codepoints": [
+    "U+25A5"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_a_h",
+   "glyph": "▦",
+   "codepoints": [
+    "U+25A6"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_a_s",
+   "glyph": "▥",
+   "codepoints": [
+    "U+25A5"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_a_t",
+   "glyph": "▥",
+   "codepoints": [
+    "U+25A5"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_h_a",
+   "glyph": "▣",
+   "codepoints": [
+    "U+25A3"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_h_h",
+   "glyph": "▒",
+   "codepoints": [
+    "U+2592"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_h_t",
+   "glyph": "▣",
+   "codepoints": [
+    "U+25A3"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_s_a",
+   "glyph": "▤",
+   "codepoints": [
+    "U+25A4"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_s_s",
+   "glyph": "▤",
+   "codepoints": [
+    "U+25A4"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_s_t",
+   "glyph": "▤",
+   "codepoints": [
+    "U+25A4"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_t_a",
+   "glyph": "▦",
+   "codepoints": [
+    "U+25A6"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_t_h",
+   "glyph": "▔",
+   "codepoints": [
+    "U+2594"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_t_s",
+   "glyph": "▦",
+   "codepoints": [
+    "U+25A6"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_t_t",
+   "glyph": "▦",
+   "codepoints": [
+    "U+25A6"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/kill_zone",
+   "glyph": "≁",
+   "codepoints": [
+    "U+2241"
+   ],
+   "color": null,
+   "drawn_by": null,
+   "in_fonts": []
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/killed_by_burav",
+   "glyph": "◑",
+   "codepoints": [
+    "U+25D1"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/killed_by_worm",
+   "glyph": "▼",
+   "codepoints": [
+    "U+25BC"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/mine",
+   "glyph": "⋄",
+   "codepoints": [
+    "U+22C4"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/rocket",
+   "glyph": "▣",
+   "codepoints": [
+    "U+25A3"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/severe_damage",
+   "glyph": "⋟",
+   "codepoints": [
+    "U+22DF"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/shell",
+   "glyph": "▦",
+   "codepoints": [
+    "U+25A6"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/hud_msg_mp_dmg/torpedo",
+   "glyph": "⌋",
+   "codepoints": [
+    "U+230B"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/infinity",
+   "glyph": "∞",
+   "codepoints": [
+    "U+221E"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "default_normal.otf",
+    "firasanscondensed-light.ttf",
+    "firasanscondensed-regular.ttf",
+    "jetbrains-mono-nl-regular.ttf",
+    "opensansemoji.ttf",
+    "pt_sans-light.otf",
+    "pt_sans-web-regular-reducedheight.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/info",
+   "glyph": "┌",
+   "codepoints": [
+    "U+250C"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/aiGroundKills",
+   "glyph": "▯",
+   "codepoints": [
+    "U+25AF"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "firasanscondensed-light.ttf",
+    "firasanscondensed-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/aiKills",
+   "glyph": "▰",
+   "codepoints": [
+    "U+25B0"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/aiNavalKills",
+   "glyph": "┙",
+   "codepoints": [
+    "U+2519"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/aiTotalKills",
+   "glyph": "␢",
+   "codepoints": [
+    "U+2422"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/assists",
+   "glyph": "▱",
+   "codepoints": [
+    "U+25B1"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/captureZone",
+   "glyph": "△",
+   "codepoints": [
+    "U+25B3"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/damageZone",
+   "glyph": "▲",
+   "codepoints": [
+    "U+25B2"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/deaths",
+   "glyph": "▴",
+   "codepoints": [
+    "U+25B4"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/football_assists",
+   "glyph": "●",
+   "codepoints": [
+    "U+25CF"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/football_goals",
+   "glyph": "⋨",
+   "codepoints": [
+    "U+22E8"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/football_saves",
+   "glyph": "⋧",
+   "codepoints": [
+    "U+22E7"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/groundKills",
+   "glyph": "▮",
+   "codepoints": [
+    "U+25AE"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/humanKills",
+   "glyph": "╞",
+   "codepoints": [
+    "U+255E"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/kills",
+   "glyph": "▭",
+   "codepoints": [
+    "U+25AD"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/navalDamage",
+   "glyph": "⋩",
+   "codepoints": [
+    "U+22E9"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/navalKills",
+   "glyph": "┚",
+   "codepoints": [
+    "U+251A"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/raceBestLapTime",
+   "glyph": "▸",
+   "codepoints": [
+    "U+25B8"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/raceFinishTime",
+   "glyph": "▹",
+   "codepoints": [
+    "U+25B9"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/raceLap",
+   "glyph": "▷",
+   "codepoints": [
+    "U+25B7"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/raceLastCheckpoint",
+   "glyph": "▵",
+   "codepoints": [
+    "U+25B5"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/raceLastCheckpointTime",
+   "glyph": "▶",
+   "codepoints": [
+    "U+25B6"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/rowNo",
+   "glyph": "#",
+   "codepoints": [
+    "U+0023"
+   ],
+   "color": null,
+   "drawn_by": null,
+   "in_fonts": [
+    "default_normal.otf",
+    "firasanscondensed-light.ttf",
+    "firasanscondensed-regular.ttf",
+    "jetbrains-mono-nl-regular.ttf",
+    "opensansemoji.ttf",
+    "pt_sans-light.otf",
+    "pt_sans-web-regular-reducedheight.ttf",
+    "rare_symbols.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/score",
+   "glyph": "▂",
+   "codepoints": [
+    "U+2582"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/suitKills",
+   "glyph": "▊",
+   "codepoints": [
+    "U+258A"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/mpstats/ufoKills",
+   "glyph": "▄",
+   "codepoints": [
+    "U+2584"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/news",
+   "glyph": "╲",
+   "codepoints": [
+    "U+2572"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/nuclear_bomb",
+   "glyph": "☢",
+   "codepoints": [
+    "U+2622"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "opensansemoji.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/orderScore",
+   "glyph": "▂",
+   "codepoints": [
+    "U+2582"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/orderSymbol",
+   "glyph": "▪",
+   "codepoints": [
+    "U+25AA"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/pc",
+   "glyph": "⋆",
+   "codepoints": [
+    "U+22C6"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/psn",
+   "glyph": "⋊",
+   "codepoints": [
+    "U+22CA"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/search",
+   "glyph": "⌡",
+   "codepoints": [
+    "U+2321"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/spare",
+   "glyph": "╢",
+   "codepoints": [
+    "U+2562"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/star",
+   "glyph": "┐",
+   "codepoints": [
+    "U+2510"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/star/white",
+   "glyph": "┐",
+   "codepoints": [
+    "U+2510"
+   ],
+   "color": "@white",
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/steam",
+   "glyph": "⋈",
+   "codepoints": [
+    "U+22C8"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/summation",
+   "glyph": "∑",
+   "codepoints": [
+    "U+2211"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "default_normal.otf",
+    "firasanscondensed-light.ttf",
+    "firasanscondensed-regular.ttf",
+    "jetbrains-mono-nl-regular.ttf",
+    "opensansemoji.ttf",
+    "pt_sans-light.otf",
+    "pt_sans-web-regular-reducedheight.ttf"
+   ]
+  },
+  {
+   "key": "icon/timer",
+   "glyph": "▩",
+   "codepoints": [
+    "U+25A9"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/tutorial",
+   "glyph": "╵",
+   "codepoints": [
+    "U+2575"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/tv",
+   "glyph": "⋇",
+   "codepoints": [
+    "U+22C7"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/assault",
+   "glyph": "┞",
+   "codepoints": [
+    "U+251E"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/attack_helicopter",
+   "glyph": "┞",
+   "codepoints": [
+    "U+251E"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/battlecruiser",
+   "glyph": "␐",
+   "codepoints": [
+    "U+2410"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/battleship",
+   "glyph": "␑",
+   "codepoints": [
+    "U+2411"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/bomber",
+   "glyph": "┠",
+   "codepoints": [
+    "U+2520"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/cruiser",
+   "glyph": "␏",
+   "codepoints": [
+    "U+240F"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/destroyer",
+   "glyph": "␌",
+   "codepoints": [
+    "U+240C"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/fighter",
+   "glyph": "┤",
+   "codepoints": [
+    "U+2524"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/fighter_assault",
+   "glyph": "┦",
+   "codepoints": [
+    "U+2526"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/gun_boat",
+   "glyph": "␉",
+   "codepoints": [
+    "U+2409"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/heavy_bomber",
+   "glyph": "┢",
+   "codepoints": [
+    "U+2522"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/heavy_gun_boat",
+   "glyph": "␊",
+   "codepoints": [
+    "U+240A"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/heavy_tank",
+   "glyph": "┨",
+   "codepoints": [
+    "U+2528"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/human_anti_vehicle",
+   "glyph": "◦",
+   "codepoints": [
+    "U+25E6"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/human_assault",
+   "glyph": "◧",
+   "codepoints": [
+    "U+25E7"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/human_gunner",
+   "glyph": "◨",
+   "codepoints": [
+    "U+25E8"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/human_sniper",
+   "glyph": "◩",
+   "codepoints": [
+    "U+25E9"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/human_spec_forces",
+   "glyph": "◪",
+   "codepoints": [
+    "U+25EA"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/human_support",
+   "glyph": "◬",
+   "codepoints": [
+    "U+25EC"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/light_cruiser",
+   "glyph": "␎",
+   "codepoints": [
+    "U+240E"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/light_tank",
+   "glyph": "┪",
+   "codepoints": [
+    "U+252A"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/medium_tank",
+   "glyph": "┬",
+   "codepoints": [
+    "U+252C"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/naval_ferry_barge",
+   "glyph": "␋",
+   "codepoints": [
+    "U+240B"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/ship",
+   "glyph": "┮",
+   "codepoints": [
+    "U+252E"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/spaa",
+   "glyph": "┰",
+   "codepoints": [
+    "U+2530"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/submarine",
+   "glyph": "␒",
+   "codepoints": [
+    "U+2412"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/suit",
+   "glyph": "╅",
+   "codepoints": [
+    "U+2545"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/tank_destroyer",
+   "glyph": "┴",
+   "codepoints": [
+    "U+2534"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/ufo",
+   "glyph": "┞",
+   "codepoints": [
+    "U+251E"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unitclass/utility_helicopter",
+   "glyph": "┠",
+   "codepoints": [
+    "U+2520"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unittype/aircraft",
+   "glyph": "▭",
+   "codepoints": [
+    "U+25AD"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unittype/boat",
+   "glyph": "⋛",
+   "codepoints": [
+    "U+22DB"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unittype/helicopter",
+   "glyph": "⋡",
+   "codepoints": [
+    "U+22E1"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unittype/human",
+   "glyph": "╞",
+   "codepoints": [
+    "U+255E"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unittype/ship",
+   "glyph": "┚",
+   "codepoints": [
+    "U+251A"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/unittype/tank",
+   "glyph": "▮",
+   "codepoints": [
+    "U+25AE"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/universalSpare",
+   "glyph": "╢",
+   "codepoints": [
+    "U+2562"
+   ],
+   "color": "@universalSpareColor",
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/web_poll",
+   "glyph": "┋",
+   "codepoints": [
+    "U+250B"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/worldWar",
+   "glyph": "╫",
+   "codepoints": [
+    "U+256B"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/worldWar/colored",
+   "glyph": "╫",
+   "codepoints": [
+    "U+256B"
+   ],
+   "color": "@worldWarIconColor",
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/xbox",
+   "glyph": "⋉",
+   "codepoints": [
+    "U+22C9"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "symbols_skyquake.ttf"
+   ]
+  },
+  {
+   "key": "icon/xmas_tree",
+   "glyph": "⋮",
+   "codepoints": [
+    "U+22EE"
+   ],
+   "color": null,
+   "drawn_by": "symbols_skyquake.ttf",
+   "in_fonts": [
+    "jetbrains-mono-nl-regular.ttf",
+    "symbols_skyquake.ttf"
+   ]
+  }
+ ]
+}
