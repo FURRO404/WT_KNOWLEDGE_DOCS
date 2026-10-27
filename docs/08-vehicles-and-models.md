@@ -631,8 +631,8 @@ engine count.
 
 ### 6.2 Template values for modern jets
 
-For many jets the engine and `Passport` values in the client files are a
-template, not the aircraft's real performance:
+For many jets the `Main.Thrust` and `Passport` values in the client files are
+a template, not the aircraft's real performance:
 
 - `EngineType0.Main.Thrust` is `2200` in 71 of 371 jet flight models and
   `2600` in 91 of them, for example the F-5C, F-16A, F-15A and MiG-29 9-12.
@@ -640,8 +640,37 @@ template, not the aircraft's real performance:
 - The F-16A and F-15A `Passport` blocks are copies of the F-5 values
   (`maxSpeedWep` starts `[0, 1150.09]`).
 - The live `aces.vromfs.bin` and the newer
-  `cache/binary.<version>/aces.vromfs.bin` hold the same values. The real
-  values reach the game by a path that the client BLKs do not show.
+  `cache/binary.<version>/aces.vromfs.bin` hold the same values.
+
+The real dry thrust is in `EngineType0.Main.ThrustMax.ThrustMax0` (kgf for
+each engine, static, sea level). All 371 jet flight models have it. It
+matches the real engines: F-16A 6490, Su-27 7680, F-104G 4490, J-7E 4100.
+`ThrustMaxCoeff_i_j` scales it by altitude and TAS. [verified, 2.58]
+
+The client calculates the jet thrust as follows. [read, Linux client 2.58]
+
+```
+dry  = ThrustMax0 × 9.81 × ThrustMaxCoeff(alt, TAS)        (N, bilinear)
+mult = ThrustMult(rpm / RPMMax)                            (Mode table)
+ab   = AfterburnerBoost × ThrAftMaxCoeff(alt, TAS)         (bilinear)
+thrust = dry × mult × (ab if the afterburner is on) × engine count
+```
+
+- The `Mode<N>` table maps `Throttle` to a target `RPM` fraction, and the RPM
+  fraction to `ThrustMult`. The table key is the shaft speed as a fraction of
+  `RPMMax` (the loader stores `RPMMax × π/30`), not the throttle. The usual
+  jet table gives `ThrustMult` 1.0 at throttle 1.0 (RPM 0.99) and the `Mode5`
+  value at throttle 1.1 (RPM 1.0). [read; the throttle-to-RPM step is a guess]
+- The two tables use the same `Altitude_i` (m) and `Velocity_j` (km/h TAS)
+  grid. The F-16A static values are 6490 kgf dry and 6490 × 1.26 × 1.1 =
+  8995 kgf with the afterburner. `ThrAftMaxCoeff` rises with speed (1.55 at
+  1,000 km/h at sea level, up to 4.05 at 12 km), so the static ratio is low
+  but the ratio in flight is high.
+- The modifications `hp_105_jet` (`thrustMult` 0.945) and
+  `new_compressor_jet` (0.96) in `char.vromfs.bin/config/modifications.blk`
+  scale `ThrustMax0` as `× (1 + (thrustMult − 1) × k)`. A stock jet is
+  probably about 9% weaker than a jet with all modifications. [read; when
+  k is 1 is a guess]
 
 The wing polar values (`lineClCoeff`, `ClCritHigh`, `CdMin`, wing areas,
 `CritOverload`) differ per jet and look real. [verified, 2.58 and 2.59]
@@ -652,6 +681,174 @@ only. [verified, 2.58]
 
 For real performance, use the 8111 API in a test drive (see
 [04](04-localhost-8111-api.md)), or fit from replay tracks.
+
+### 6.2a How the client uses a polar
+
+Each lifting surface (`WingPlane` `FlapsPolar0/1`, `FuselagePlane.Polar`,
+`HorStabPlane.Polar`, `VerStabPlane.Polar`) is one polar. Angles are in
+degrees. [read, Linux client 2.58]
+
+**Flaps.** The client blends `FlapsPolar0` and `FlapsPolar1` by the flap
+position: a linear blend for each key, clamped between the two values.
+
+**Mach.** For `MachFactor` 3, each of the seven blocks `<N>` gives a
+multiplier m(M):
+
+- below `MachCrit<N>`: the base value (1; 0 for block 6)
+- from `MachCrit<N>` to `MachMax<N>`: a cubic with f(MachCrit) = base,
+  f′(MachCrit) = 0, f(MachMax) = `MultMachMax<N>`, f′(MachMax) =
+  `MultLineCoeff<N>` (the loader solves the 4×4 system)
+- above `MachMax<N>`: `MultMachMax + (M − MachMax) × MultLineCoeff`, limited
+  by `MultLimit` (a maximum if the slope is positive or zero, a minimum if it
+  is negative)
+
+| Block | Scales |
+|---|---|
+| 1 | `CdMin` |
+| 2 | `lineClCoeff` (with `CombinedCl`: × (m1 + 1 − m2) instead of × m2) |
+| 3 | `ClCritHigh` and `ClCritLow`: Cl = m3 × (ClCrit − Cl0′) + Cl0 |
+| 4 | `alphaCritHigh` and `alphaCritLow` |
+| 5 | the induced factor k = 1 / (π × e × span² / area) |
+| 6 | an extra term, 0 below `MachCrit6` [use not known] |
+| 7 | `Cl0` (Cl0′ = Cl0 × m7) |
+
+The client computes the cubic in float32. It builds the 4×4 matrix
+[0, 0, 1, 1; 1, 1, c, mx; 2c, 2mx, c², mx²; 3c², 3mx², c³, mx³] (c =
+`MachCrit`, mx = `MachMax`, all float32, c³ in double and rounded once),
+inverts it by cofactors in double, and rounds the inverse to float32. The
+coefficients are float32 of a dot product with (slope, base, `MultMachMax`),
+and the cubic is evaluated in Horner form in float32. The coefficients are
+large, so the rounding shows in the result. A singular matrix gives the
+cubic 0·M³ + 0·M² + 0·M + base. [verified by emulation of the client code,
+2.58]
+
+A wing polar with another `MachFactor` value uses the polar with no Mach
+change. A propeller blade polar is different, see 6.2b.
+
+**Lift.** With s = `lineClCoeff` (per degree):
+
+- From α1L to α1H: Cl = Cl0 + s·α.
+- α1H = 2 × (ClCritHigh − Cl0) / s − alphaCritHigh. α1L is the same on the
+  low side. If α1H < α1L, the two are set to their mean.
+- From α1H to `alphaCritHigh`: a parabola, Cl = ClCritHigh − a·(αcrit − α)²,
+  with a = (ClCritHigh − Cl0 − s·α1H) / (αcrit − α1H)². It reaches
+  `ClCritHigh` at `alphaCritHigh` with zero slope.
+- Past the critical angle: a parabola of width `AfterCritParabAngle` down
+  to `ClAfterCritHigh × sin(α × π/80)`. It uses `AfterCritDeclineCoeff`,
+  `AfterCritMaxDistanceAngle` (at least 40°) and a cosine to 180°.
+
+**Drag.** Cd = CdMin + k × (Cl0 + s·α)². The linear lift is used, not the
+stalled lift. Past the critical angle on each side, the client adds
+`CxAfterCoeff × (α − αcrit)`. Cd is limited to
+`|sin α| × ClCritHigh + 0.15`.
+
+**Instructor limits (data only, rule not read).** The flight model has an
+`Instructor` block with `critMult` [2 values], `overloadMult` [4 values],
+`overloadTimeRange` and `limitOverload`. The loader stores them at struct
+offsets +0xec, +0xf8 and +0x10c. Some unit files (84 in the 2026-10 datamine,
+most of them late jets) also have `instructorCritMult` and
+`instructorOverloadMult` at the top level, for example [0.8, 0.8] and
+[0.6, 0.67, 0.85, 0.92]. These are smaller than the flight model's own
+values (often [0.86, 0.86] and [0.85, 0.92, 0.85, 0.92]). A unit value is
+probably an override of the flight model value.
+
+A guess, not checked in the game: the instructor G limit is
+`overloadMult[1]` × the wing strength G, and the wing strength G is
+2 × `CritOverload[1]` / (m·g). For the F-16A at half fuel this gives
+0.67 × 14.0 = 9.4 G, near the real F-16 limit of 9 G. The role of the other
+values is not known.
+
+**Wing strength per sweep.** A swing wing (`WingPlaneSweep<N>`) has its own
+`Strength` block (`CritOverload`, `VNE`, `MNE`) for each sweep position. The
+forward position has the lowest limits.
+
+### 6.2b Piston engines and propellers
+
+The rules below were read in the Linux client 2.58 and checked by emulation
+of the client functions: 560 propellers and about 690 engines give the same
+values. Items marked [guess] are not from the client code.
+
+**Layouts.** A flight model holds its piston engines in one of three forms:
+
+- Type layout: `Transmission<n>` links `Engine<i>.Type` to an `EngineType<k>`
+  block and `Propeller<j>.Type` to a `PropellerType<k>` block.
+- Inline layout: `Engine<n>` and `Propeller<n>` hold the blocks themselves
+  (the engine stub has no `Type` key, and `Propeller<n>.Geometry` has
+  `Radius`).
+- Old layout: `Engine<n>.Propellor` holds the propeller, with
+  `AdvancedPropRadius`, `PropPhi_i` (blade pitch), `PropWidth_i`, `Diameter`,
+  `PhiMin`/`PhiMax` and `Reductor`. Each engine has its own transmission.
+  The old loader reads the polar with the same function as the new one.
+  `ShaftRPMMin`/`ShaftRPMMax` default to the `Propellor` keys
+  `GovernorMinParam`/`GovernorMaxParam`, and `RPMAfterburner` defaults to
+  `RPMMax`.
+
+Some `Main`, `Compressor` and blade keys are lists in a few files. The first
+value is probably the one that the client uses. [guess]
+
+**Supercharger (`Compressor.Type` 1 and 2).** The inlet pressure is
+p_in = (p + 0.5 × `SpeedManifoldMultiplier` × ρ × V²) / 101325. The client
+picks the best stage from the `Altitude<i>`, `Power<i>`,
+`AltitudeConstRPM<i>`, `PowerConstRPM<i>`, `Ceiling<i>` and
+`PowerAtCeiling<i>` keys. Below a stage's rated altitude the power factor
+is ((1 − p_in) / (1 − p_stage)) × (P − g) + g. When p_in goes above the
+stage pressure (ram air at a very high speed), the divisor goes near zero
+and the factor becomes very large: the Spitfire IX gives a factor of 276 at
+p_in 1.3. This only occurs past the speed limit.
+
+**Turbocharger (`Compressor.Type` 3).** In steady state the turbo speed is
+n = min((nmax / x) × boost, nmax), with nmax =
+`TurboChargerRPMMaxAllowed`, boost the manifold pressure that the throttle
+asks for, and x the manifold pressure without the turbo (p_in × the
+compressor RPM term × `ATA` / (k × `Altitude0`)). The meaning of k is not
+known. The loader keeps `TurboChargerRPMMin`,
+`TurboChargerRPMMaxAllowed`, `TurboChargerRPMMax` (rad/s) and
+1 / `TurboChargerTimeConst`.
+
+**Governor.** The engine runs at `GovernorMaxParam` (WEP:
+`GovernorAfterburnerParam`). The prop turns at engine ω × the reductor. The
+governor sets the blade pitch, between `PitchMin` and `PitchMax`, so that
+the prop torque × ω equals the engine power. At a pitch stop the RPM moves
+until the two balance. [the pitch-stop rule is a guess]
+
+**Blade element.** The client cuts each blade into four elements at
+r = (0.35 + 0.2i) × R, with width `BladeWidth<i>` × R and twist
+`BladePitch<i>` (degrees). For each element:
+
+```
+tang = r × ω            W² = tang² + va²        phi = atan2(va, tang)
+aoa  = pitch + twist − phi                      (degrees for the polar)
+f    = width × 0.2R² × W² × ρ/2
+T   += Cl·f·ml × tang/W − Cd·f·md × va/W
+Q   += r × (Cd·f·md × tang/W + Cl·f·ml × va/W)
+```
+
+T and Q are × `NumBlades`. va = V + w/2, with the wake speed w from
+momentum: w = √(2T / (ρA) + V²) − V, limited to ±150 m/s, A = π(D/2)².
+A wake swirl s = Q / (0.5 × |V + w/2| × ρA × (D/2)²), limited to 0–20,
+lowers the blade speed by 0.25 × s. The steady state is a fixed point. A
+relaxation of 0.5 for 60 steps converges.
+
+**Blade polar.** A blade polar takes its missing keys from defaults:
+`lineClCoeff` 0.075, `Cl0` 0.4, `ClCritHigh` 1.4, `ClCritLow` −0.9,
+`alphaCritHigh` 17, `alphaCritLow` −17, `CdMin` 0.012, `MachFactor` 2,
+`CombinedCl` true. The aspect ratio for k is
+`OswaldsEfficiencyNumber` / (0.2 × Σ width), or 55.5 when the key is
+missing. A missing blade Mach key reads as 0, not as the wing default.
+
+The blade Mach number is W / a. By `MachFactor`:
+
+- 1: f = max(|1 − min(M, 0.9)²|^0.3, 0.2). Cd × 1/f, Cl × √(1/f).
+- 2: the same, with no 0.9 limit. The blade also uses fixed stall corners
+  from a default polar at Mach 0: α1H 9.6667, α1L −17.6667, kh 0.0051136,
+  kl −0.0562501.
+- 3: the seven Mach blocks of 6.2a.
+
+**Check.** With these rules, the WEP top speed and climb from
+`performance/<unit>.blk` `altSpecs` agree at 233 points: top speed median
+−0.1% (10th to 90th percentile −3.8% to +8.2%), climb median +0.6%
+(−13.7% to +23.7%). The airframe drag model adds part of this error.
+[verified, 2.58]
 
 ### 6.3 What replay tracks show
 
