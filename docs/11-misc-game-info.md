@@ -1,5 +1,8 @@
 # 11 — Misc game information
 
+> Initial research: FURRO404, Linux client behavior and the in-game chat. https://github.com/FURRO404
+> Contributors: War-Thunder-Datamine by gszabi99 (the chat scripts and text tables); WrplReplayParser by LivingTheDagor (the chat packets in replays).
+
 This chapter holds notes about the game that fit no other chapter:
 
 - how the game client and its launcher behave on the desktop: windows, focus,
@@ -150,8 +153,121 @@ JSON value, and each reader sees it as text in their own language:
 
 The game uses this for its own system messages. When the game sends one, it
 changes `<` and `>` in the values to `[` and `]`. On receipt, the client does
-not do this check. Whether the chat server passes an `LMSG` message that a
-player types is not tested. [datamine, not tested live]
+not do this check.
+
+A player can type an `LMSG` message in the menu chat, and the chat server
+passes it. For example, `LMSG {"t":"hello","c":"tr"}` shows "hello" in the red
+team color. Type one space after `LMSG` and use straight double quotes.
+Battle chat does not decode `LMSG` and shows the raw text. Battle chat does
+show color tags (the game puts them in its own map-ping messages), but the
+server changes `<` and `>` to `[` and `]` in player text. `{`, `}` and `"`
+stay. [datamine; menu chat and battle chat tested live, October 2026]
+
+#### Text color markup
+
+The UI text boxes (`textarea`) read inline color tags:
+`<color=@teamRedColor>...</color>` (a named UI color) or
+`<color=#RRGGBB>...</color>` (any hex color). An `activeText` box does not
+read them. The menu chat changes a typed `<` and `>` to `[` and `]` before it
+sends (`validateChatMessage`), so a typed tag does not get through. The `LMSG`
+`c` key takes only the four tags above. A JSON escape (`\u003c` for `<`,
+`\u003e` for `>`) in an `LMSG` `t` value can possibly carry a hex color tag,
+because the sender check sees only a literal `<`. [datamine, not tested live]
+
+### Custom battle rooms (matching server)
+
+A custom battle is a room on the matching server. The client talks to it with
+`mrooms.*` calls (`matching/serviceNotifications/mroomsApi.nut`):
+`create_room`, `get_room`, `join_room`, `leave_room`, `destroy_room`,
+`set_attributes`, `set_member_attributes`, `set_password`, `set_ready_state`,
+`kick_from_room`, `invite_player`, `start_session`, `fetch_rooms_digest2`.
+Each call carries a `roomId` and a `public` (or `private`) table.
+
+- `mrooms.set_attributes` changes the room's `public` table. The room owner
+  sends it. The stock client sends its full settings table again, which
+  includes `creator`.
+- `mrooms.set_member_attributes` changes the sender's own member entry. The
+  stock client sends its own `clanTag`, `country`, `team`, `spectator`,
+  `state` and `ready`. The values come from the client, so a client can send
+  any `clanTag`.
+
+The server stores these values as the client sends them. A program that acts
+as a client can set a `creator`, a `roomName` or a `clanTag` that the stock UI
+cannot make. [datamine; community report, agrees with the live list]
+
+#### Connection to the matching server
+
+A community client for the matching server (C#, published on a cheat forum)
+shows the protocol below. The items marked "binary" are also in the
+2026-10-28 Linux client. The other items come only from that code and are not
+tested.
+
+- Transport: one TCP connection. Each message is JSON.
+- Envelope: `{"data": {"name": "<api>", "data": {...}}, "id": N, "error": E,
+  "type": T}`. `id` pairs a reply with its request. `type` 52 is an API call,
+  64 is the login, and 24 closes the connection. A reply with an `error` value
+  other than 0 failed.
+- Compression: the JSON text gets a `0x1A` byte in front and is compressed
+  with LZ4 (block format). The frame is a `0x01` byte, the frame length
+  (int32), the length before compression (int32), then the LZ4 data.
+- Encryption: AES-128-CBC with PKCS7 padding. The client makes a random
+  session key. The IV is four int32 values: 0, then the length before
+  compression three times. Each encrypted frame has a 16-byte header: the
+  encrypted length, then that same IV value three times.
+- Login (`type` 64, `id` 0): the client encrypts
+  `{"chard_token", "session_key_evp"}` with the server's RSA-2048 public key
+  (PKCS#1 v1.5) and sends it as `login`, with `auth_jwt`, `platform`,
+  `protocol`, `version` (the game version as four 16-bit parts in one
+  64-bit value), `user_id` and `name`. The field names and the public key are
+  in the client binary. [binary]
+- Error names: the client binary holds the full `SERVER_ERROR_*`,
+  `CLIENT_ERROR_*` and `HOST_ERROR_*` list, from `OPERATION_COMPLETE` to
+  `SERVER_ERROR_LOBBY_MATCH_STARTED`. The scripts import some of them from the
+  native `matching.errors` module. [binary, datamine]
+- API names: the scripts call `mrooms.*`, `match.*`, `mlogin.*`,
+  `mpresence.*`, `hmanager.*` and `mrpc.*`. Server pushes have names like
+  `mrooms.on_room_member_joined` and `mlogin.update_online_info` (which holds
+  `rooms_total` and `players_total`). [datamine]
+- Room data from `mrooms.get_room`: `public` (`creator`, `creatorId`,
+  `players`, `hidden`, `mission`, `missionURL`, `chatPassword`, `room_key`,
+  `sessionId`, `hasSession`), `private` (`blacklist`, `room_secret`), `size`,
+  and `members` (`memberId`, `userId`, `name`, `public`, `private`). A member's
+  `public.playerInfo` holds the server's record: `name`, `clanTag`, `clanId`,
+  `country`, `rank`, `mrank`, `squad`, `team` and `crafts_info`.
+- Room bans: `private.blacklist` is a list of user ids. The owner changes it
+  with `mrooms.set_attributes`.
+- Room id: the low 32 bits are a counter. The high 32 bits are seconds after
+  2022-11-09 12:30:38 UTC (Unix time 1667997038), the room's creation time.
+  One room id from October 2026 decodes to 2026-07-29, which is possible for a
+  long-lived room. [not tested]
+
+#### Host names in the room list
+
+The room list ("Game Creator" column) shows `public.creator`, after
+`getPlayerName`. The stock client sets it to the player's own name. The list
+puts it in a `textareaNoTab` and escapes only quotes (`stripTags`), so markup
+in it works:
+
+- `<color=#RRGGBB>...</color>` gives a color. One tag on each character gives
+  a gradient.
+- `<b>...</b>` gives larger, bold text. The game's own texts do not use this
+  tag. [community report; seen in the live list]
+- A platform suffix changes to an icon: `@live` (Xbox) shows `⋇` (a gamepad
+  glyph) on PC, `@psn` shows the PSN icon, `@steam` and `@epic` are removed
+  (`user/nickTools.nut`, `user/remapNick.nut`).
+
+The mission column shows `public.roomName` when it is set, and the stock
+client never sets it. That column is an `activeText`, so it shows
+symbol-font glyphs but no color markup.
+
+#### Limits
+
+The changes apply only to the room data. The host must own the room to change
+`public`. In a normal battle, the player does not own the room, and the name
+and the clan tag come from the server's player record. Battle chat also takes
+the sender name from that record. So this procedure cannot change a player's
+name in normal battles. [community report; agrees with the battle chat
+routing above]
 
 ### Battle chat
 
