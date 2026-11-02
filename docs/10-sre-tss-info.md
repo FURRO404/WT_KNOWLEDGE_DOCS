@@ -504,7 +504,8 @@ A season lasts two months and starts on the 1st of an odd month (January, March,
 May, July, September, November). The max BR steps down once a week. Gaijin
 posts the schedule in one forum post that it edits for each season
 (`forum.warthunder.com/t/4446`). The post often comes out late, and its edit
-history is not public.
+history is not public. The edits for the last two seasons came on the first day
+of the season: 2026-09-01 at 11:18 UTC and 2026-11-01 at 14:42 UTC.
 
 Two events happen at the season start, and they are independent:
 
@@ -528,8 +529,10 @@ last cap of the old season (4.7 or 5.0). The exceptions:
 
 The weekly steps change at the same time of day as the cap change, between the
 two slots on the date of the schedule. They fall on the weekday of the season
-start (Jan: Thursday, Mar: Monday, May: Friday, Jul: Wednesday, Sep: Tuesday).
-In March, week 1 ran 8 days, from Sunday the 1st to Monday the 9th. The posted
+start (Jan: Thursday, May: Friday, Jul: Wednesday, Sep: Tuesday). A season that
+starts on a Sunday steps on Mondays, and week 1 runs 8 days, from Sunday the 1st
+to Monday the 9th. March 2026 did this in the game. The November 2026 post has
+the same layout (steps on 09.11, 16.11 and each Monday after). The posted
 schedule can differ from the game. The 2026-01 post put the last step on
 Tue 24.02, but the game kept the Thursday rhythm and changed on Thu 26.02.
 
