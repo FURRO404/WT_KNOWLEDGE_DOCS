@@ -570,6 +570,24 @@ uses its own per-cell origin (section 1.3) in the same frame. A tank level spans
 4096x4096 m in world coordinates (0..4096). The playable sub-region is a crop
 inside that span.
 
+The recorded Y of a ground unit is relative to the level `water_level` (from
+the level `.blk`, see section 5.2). It is not the absolute world Y. Add
+`water_level` to the recorded ground Y to get the world Y:
+
+```
+worldY = recordedY + water_level      (ground units only)
+```
+
+Air units are already in absolute world Y. Mission positions (spawns, capture
+zones) are also absolute. On most levels `water_level` is 0, so the offset does
+not show. Where it is not 0, every ground sample sits exactly `water_level`
+metres off the HM2 surface until you apply it. A check on 72 server replays
+over 36 tank levels gave a median error of 0.1 m or less after the shift.
+Examples of non-zero values: avg_karelia_forest_a +30, avg_berlin +35,
+avg_snow_alps -100, avg_japan -1493, avg_northern_india +920. The value has no
+relation to a visible water surface. Some levels with a large value have no
+water at all.
+
 ### 4.5 Trajectory codec (coordencode)
 
 A delta-and-varint codec packs a list of timed positions to a small byte
