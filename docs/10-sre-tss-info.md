@@ -348,6 +348,13 @@ that shows only after login. Its API paths (from the page code):
   CDN gives 404 for that form and 302 to the file for the padded form
   `074b12d40024ef1e`. Pad the ID to 16 digits with zeros before you build the
   URL. [verified, 2026-10]
+- Session IDs do not always increase with time. Until 2026-09-28 the SQB IDs
+  increased, from `0x05eb…` in January to `0x074f…`. From 2026-09-29 the IDs
+  come in blocks of 1 to 11 days, and the blocks are not in order:
+  `0x6e07…`, `0x72e3…`, `0x0d3e…`, `0x127b…`, `0x4ad2…`, `0x0112…`,
+  `0x0be9…`, `0x2b31…` (to 2026-11-06). An ID sort, as numbers or as hex
+  text, does not give the match order. To find the newest match, sort by the
+  match end time. [verified, about 610,000 SQB matches, 2026-11]
 - The CDN sends a 302 to the file on a second host,
   `https://wt-replays-cdnnow.cdn.gaijin.net/{hex session id}/NNNN.wrpl`.
   [verified, 2026-10]
@@ -538,3 +545,22 @@ Tue 24.02, but the game kept the Thursday rhythm and changed on Thu 26.02.
 
 The match data cannot show the exact minute of a change that falls between the
 two slots, because no matches are played then.
+
+### 9.7 Vehicles per player and mission modes [verified, 300 server replays, 2026-11]
+
+- Squadron Realistic Battles give each player one vehicle per match. There is
+  no respawn into a second vehicle.
+- Some vehicles add child units, and the replay lists each child unit as a
+  separate `used` unit of the player:
+  - Remote SAM launchers of radar SPAA, for example `germ_iris_slm_launcher`,
+    `it_samp_t_launcher`, `fr_samp_t_launcher`, `uk_sky_sabre_launcher`,
+    `ussr_buk_m3_launcher`, `sw_nasams_launcher`, `us_sl_amraam_launcher`,
+    `jp_type_81_tansam_launcher`. The unit type is `tank` and the class is
+    `spaa`.
+  - Drones that some light tanks can launch. [reported]
+- The main vehicle is the first `used` unit in the player's unit list. Kills
+  made by a launcher name the launcher as the offender unit.
+- About 4% of player-matches had a child unit. 3.6% of kills came from a child
+  unit.
+- Mission modes seen (difficulty `realistic`): Domination 76%, Conquest #1 18%,
+  Conquest #3 3%, Conquest #2 3%.
