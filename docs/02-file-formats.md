@@ -155,6 +155,7 @@ document). The groups are:
 | `game.vromfs.bin_u`       | game scripts and settings                              |
 | `gui.vromfs.bin_u`        | UI layout and script                                   |
 | `lang.vromfs.bin_u`       | localization (`lang` folder)                           |
+| `lang_extra.vromfs.bin` (install only, from 2.61) | `base/lang/credits.txt.blk` and the EULA texts (`eula*.txt.blk`, `pix_eula*.txt.blk`). No CSV tables. |
 | `regional.vromfs.bin_u`, `regional-lang.vromfs.bin_u` | region-specific data and text |
 | `mis.vromfs.bin_u`        | missions                                               |
 | `tex.vromfs.bin_u`, `atlases.vromfs.bin_u`, `images.vromfs.bin_u` | textures and UI images |
@@ -163,6 +164,17 @@ document). The groups are:
 
 The datamine stores BLK files as decoded `.blkx` (JSON). See Section 2 for the
 BLK formats.
+
+In the game install, most `.vromfs.bin` files sit in the install root. The
+`regional.vromfs.bin` and `regional-lang.vromfs.bin` files are only in
+`cache/binary.<version>/`, and the cache can keep older versions. A Steam update
+does not write them: after the Steam update to 2.61.0.11, the newest cache
+directory was still `binary.2.59.0`. Do not trust a cached regional file whose
+directory version differs from the install version.
+
+The install version is in `warthunder.yup`, a bencoded file. The first
+`7:version` key is followed by `<length>:<version>`, for example
+`7:version9:2.61.0.11`.
 
 ---
 
