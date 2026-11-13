@@ -470,12 +470,75 @@ rail meshes baked into the base model, hidden by default) and
 hangs from. Each weapon BLK carries a `mesh` param naming the ordnance
 dynmodel. Output is a per-unit loadout JSON.
 
+Each `Weapon` block also names its damage parts with `barrelDP` and
+`breechDP`. Do not take a numbered barrel name as the main gun. On the
+T-80BVM, `gun_barrel_dm` / `cannon_breech_dm` is the 125 mm gun,
+`gun_barrel_01_dm` is the coaxial PKTM and `gun_barrel_02_dm` is the NSV. The
+Pantsir SM-SV has no plain name at all: its four 30 mm 2A38M barrels are
+`gun_barrel_01_dm` to `_04_dm` (breeches `cannon_breech_01_dm` and `_02_dm`),
+and `gun_barrel_05_dm` is the 57E6M missile launcher. [verified, datamine,
+2026-11]
+
 ### 3.6 Cancelled-pose rigids
 
 Tanks and planes need opposite handling. A ground vehicle renders a
 cancelled-pose node untransformed. An aircraft applies the wtm to it. Use a
 per-class switch: untransformed for ground, apply the wtm for aircraft. The
 per-vehicle export step sets it from the vehicle class.
+
+### 3.7 Client runtime state of a vehicle
+
+This section is about the running client, not the datamine. The client keeps
+vehicle state in daECS components (looked up by the FNV-1a hash of the name)
+and in a native unit object. Component names are stable across patches. Unit
+object offsets move with each build, so each one carries its build id.
+
+**Ammunition** [verified, Linux client build `00ae3f17`, custom battle,
+T-80BVM, 2026-11]
+
+| component | content |
+|---|---|
+| `ammo_slots__node` | one 16-byte record per rack slot: a pointer to the slot's collision record, then a pointer to its live 4x4 matrix |
+| `ammo_slots__numAmmo` | a `u32` per slot. NOT reliable on the client: an enemy with 4 rounds read 16 full slots, and the local vehicle read 53 full slots for 16 rounds |
+| `ammo_stowage__weaponAmmoCount` | a `u32` per stowage: rounds in the racks, the round in the breech not included. Correct for other players too (4 for a spawn with 5), and it goes down by one on each shot they fire |
+| `ammo_clusters__slotsRange` | a `[begin, end)` pair of `u32` per rack group (`shells` or `charges` block) |
+| `ammo_clusters__typeAndStage` | 2 bytes per group: byte 0 is 1 for charges and 0 for shells, byte 1 is the stage (1 first, 2 second) |
+| `ammo_stowages__clustersRange` | a `[begin, end)` pair of group indices per stowage |
+
+The client's slot list is the unit file's list **reversed**, groups and slots
+both. On the T-80BVM, slot 0 is `ammo_body_28_dm` and slot 27 is
+`ammo_body_01_dm`; slots 28 to 55 are `ammo_turret_28_dm` to `_01_dm`. So the
+spawn fill of [06 §3.5](06-ballistics-and-armor.md) ("from the last listed
+slot", "the cluster listed last first") runs from the lowest slot index up in
+the client's list. With N rounds in the racks, the first N shell slots and the
+first N charge slots of that order matched the in-game X-ray at spawn.
+
+An ammo slot's collision record is 0x40 bytes, with the box corners as two
+`float3` at +0x08 and +0x14 in the node's own frame. [build `00ae3f17`]
+
+**Collision node names.** The per-model collision node table has 0x48-byte
+entries: a record pointer at +0x00 and the name at +0x20. A short name is
+inline and NUL terminated. A long name (seen from 24 characters, for example
+`composite_armor_turret_01_dm`) is stored as a pointer and a `u64` length at
++0x20 instead. A T-80BVM has 461 entries. [build `00ae3f17`]
+
+**Life and death.** The unit object holds two battle-clock floats: the time
+of death (-1.0 while alive) and the spawn time of the current life. On build
+`00ae3f17` they are at unit + 0x10a8 and unit + 0xaa0. In a custom battle a
+vehicle can respawn in the same ECS entity, and its time of death is then not
+cleared. A helicopter died at 2796.8 and respawned 95 m away on its pad; its
+time of death stayed 2796.8 and its spawn time became 2812.4. A spawn time
+later than the time of death means a new life; every wreck in the same
+battle read an earlier spawn time. [verified, 2026-11]
+
+**Repair parts.** `repair_system_parts_id` holds 6-byte records: a part id and
+an `int32` global id. The high byte of the global id equals the part id. The
+low 16 bits matched the index into the `config/damagemodelparts.blk` name
+list ([03 §2.4b](03-replays.md#24b-spawns-ecs-messages-and-damage-state)) plus
+2, on 20 of 21 parts of one Leopard. `repair_system_parts_state` is a `u32` per
+part; bit 0 is "broken". A destroyed (black) barrel did not set bit 0, so
+that state is stored somewhere else, not yet found. [partly verified,
+2026-11]
 
 ---
 

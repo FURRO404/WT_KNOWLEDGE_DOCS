@@ -476,6 +476,33 @@ The `DetailMap` section holds 7-byte landclass IDs per cell (32x32 cells at
 slot budget is 12 across up to three atlas PNGs. The parser merges duplicate
 landclass entries, so a real class does not fall past the last slot.
 
+### Packed land weight atlas (from game 2.61)
+
+The `DetailMap` header is four `int32`: `sizeX`, `sizeY`, `texSize`,
+`texElemSize`. Before 2.61, `texSize` was the size of each per-cell weight
+texture, and a table of `sizeX*sizeY` offsets pointed at one record per cell:
+7 landclass id bytes, `int32 len`, `int32 tex2Offset`, then 1 or 2 DDSx weight
+textures. From 2.61 (seen on air and ground levels), `texSize` is 0
+(`PACKED_TEX_SIZE`) and the level ships one packed atlas instead
+(DagorEngine `LandWeightAtlas::readPacked`, `land_weight_atlas.hlsli`):
+
+1. The legacy offset table is still there, but every entry points at one stub
+   record that follows it (7 bytes `0xFF`, then 8 zero bytes). Loaders older
+   than 2.61 read every cell as "no landclass".
+2. `int32 pagesPerRow`, `int32 pageCount`.
+3. `sizeX*sizeY` records of 12 bytes: a `uint32` pages word, then 7 landclass
+   id bytes, then 1 pad byte. In the pages word, page 0 = `w & 0x3FFF`,
+   page 1 = `(w >> 14) & 0x3FFF`, and the blended landclass count =
+   `((w >> 28) & 7) + 1`.
+4. `int32 len`, then a DDSx texture of `len` bytes: the page atlas (DXT1).
+
+A page is `pageW = (texElemSize + 2*2 + 3) & ~3` texels per side, with a
+2-texel border of neighbour weights. Page `p` is at
+`((p % pagesPerRow) * pageW, (p / pagesPerRow) * pageW)`. Weight channel `c`
+of a cell is colour channel `c % 3` (R, G, B) of the cell's page `c / 3`, read
+at cell texel `(x+2, y+2)`. The last channel is not stored: it is 1 minus the
+sum of the others. A cell with one landclass has no page.
+
 ---
 
 ## 4. Coordinate systems

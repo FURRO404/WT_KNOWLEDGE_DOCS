@@ -1256,6 +1256,12 @@ Game script `gamecommon/unit/ammo_stowage_loading.das` and
 6. Shells and charges fill independently, each with the same count: first
    stage first, then second stage, cluster by cluster, slot by slot.
 
+The running client stores the slots in the reverse of the unit file's order,
+so in its slot list this fill runs from the lowest index up. The client's rack
+group and round-count components are in
+[08 §3.7](08-vehicles-and-models.md#37-client-runtime-state-of-a-vehicle).
+**Confirmed** (live client, T-80BVM, 2026-11).
+
 Thus no limit such as "16 in the turret" is common to all tanks. Each unit
 sets its own split. Examples: the Leopard 2A6 holds 1 in the breech plus 15
 in the bustle (first stage) before the hull. The Challenger 2 holds 1 + 4

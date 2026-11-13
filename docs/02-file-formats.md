@@ -169,7 +169,8 @@ In the game install, most `.vromfs.bin` files sit in the install root. The
 `regional.vromfs.bin` and `regional-lang.vromfs.bin` files are only in
 `cache/binary.<version>/`, and the cache can keep older versions. A Steam update
 does not write them: after the Steam update to 2.61.0.11, the newest cache
-directory was still `binary.2.59.0`. Do not trust a cached regional file whose
+directory was still `binary.2.59.0`. The game writes them after the player
+logs in, not when the client starts. Do not trust a cached regional file whose
 directory version differs from the install version.
 
 The install version is in `warthunder.yup`, a bencoded file. The first
